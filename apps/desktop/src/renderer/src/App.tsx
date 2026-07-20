@@ -6,6 +6,7 @@ import { Sidebar } from '@/components/Sidebar';
 import { TitleBar } from '@/components/TitleBar';
 import { AnalyzerView } from '@/features/analyzer/AnalyzerView';
 import { DashboardView } from '@/features/dashboard/DashboardView';
+import { SettingsView } from '@/features/settings/SettingsView';
 
 /**
  * View switch instead of a router.
@@ -23,6 +24,8 @@ function ActiveView(): React.JSX.Element {
       return <DashboardView />;
     case 'analyzer':
       return <AnalyzerView />;
+    case 'settings':
+      return <SettingsView />;
     default: {
       const view = VIEWS.find((v) => v.id === activeView);
       return <ComingSoon label={view?.label ?? activeView} stage={view?.stage ?? 0} />;

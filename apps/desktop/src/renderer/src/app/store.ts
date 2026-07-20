@@ -1,4 +1,4 @@
-import type { ItemAnalysis } from '@poe2/models';
+import type { ItemAnalysis, NarrativeAnalysis } from '@poe2/models';
 import type { SerializableError } from '@shared/ipc';
 import { create } from 'zustand';
 import type { ViewId } from './navigation.js';
@@ -25,6 +25,14 @@ interface AppState {
   /** Accepts an analysis from any source and records it as recent. */
   setCurrentAnalysis: (analysis: ItemAnalysis) => void;
   setCurrentError: (error: SerializableError) => void;
+  /**
+   * Attaches a narrative to the analysis it describes.
+   *
+   * Keyed by the item's raw text: an AI request takes seconds, and the user may
+   * well have captured another item by the time it lands. Without the key, a
+   * late response would be stapled onto the wrong item.
+   */
+  setNarrative: (itemRaw: string, narrative: NarrativeAnalysis) => void;
 
   recentAnalyses: ItemAnalysis[];
   clearRecentAnalyses: () => void;
@@ -43,6 +51,15 @@ export const useAppStore = create<AppState>((set) => ({
       recentAnalyses: [analysis, ...state.recentAnalyses].slice(0, MAX_RECENT),
     })),
   setCurrentError: (error) => set({ currentError: error, currentAnalysis: null }),
+  setNarrative: (itemRaw, narrative) =>
+    set((state) => {
+      if (state.currentAnalysis?.item.raw !== itemRaw) return {}; // stale response
+      const updated = { ...state.currentAnalysis, narrative };
+      return {
+        currentAnalysis: updated,
+        recentAnalyses: state.recentAnalyses.map((a) => (a.item.raw === itemRaw ? updated : a)),
+      };
+    }),
 
   recentAnalyses: [],
   clearRecentAnalyses: () => set({ recentAnalyses: [] }),

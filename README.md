@@ -34,6 +34,8 @@ pnpm lint
 | `packages/models` | zod schemas + inferred types — the shared vocabulary |
 | `packages/parser` | Clipboard text → `ParsedItem`. Pure, synchronous, no I/O |
 | `packages/data` | Bundled knowledge base + the enrichment pass that uses it |
+| `packages/rules` | Deterministic craft advisor: facts, scoring, rules |
+| `packages/ai` | The natural-language layer. Providers behind one port; prompts in `.md` |
 
 Internal packages are **source-only**: their `exports` point at `src/index.ts`
 and they are bundled by Vite/electron-vite. There is no per-package build step

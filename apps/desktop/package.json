@@ -1,5 +1,6 @@
 {
   "name": "@poe2/desktop",
+  "productName": "PoE2 AI Assistant",
   "version": "0.1.0",
   "private": true,
   "description": "PoE2 AI Assistant desktop shell",
@@ -10,6 +11,7 @@
     "preview": "electron-vite preview"
   },
   "dependencies": {
+    "@poe2/ai": "workspace:*",
     "@poe2/data": "workspace:*",
     "@poe2/models": "workspace:*",
     "@poe2/parser": "workspace:*",

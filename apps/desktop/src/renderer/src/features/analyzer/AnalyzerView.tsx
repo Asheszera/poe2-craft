@@ -6,6 +6,7 @@ import { useAppStore } from '@/app/store';
 import { AdvicePanel } from './AdvicePanel';
 import { AutoCaptureToggle } from './AutoCaptureToggle';
 import { ItemCard } from './ItemCard';
+import { NarrativePanel } from './NarrativePanel';
 
 /**
  * Manual analysis flow.
@@ -86,6 +87,7 @@ export function AnalyzerView(): React.JSX.Element {
         {analysis && (
           <>
             <AdvicePanel analysis={analysis.deterministic} />
+            <NarrativePanel key={`ai-${analysis.item.raw}`} analysis={analysis} />
             <ItemCard key={analysis.item.raw} item={analysis.item} />
           </>
         )}

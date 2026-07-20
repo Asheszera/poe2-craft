@@ -17,6 +17,9 @@ export const IPC_CHANNELS = [
   'clipboard:parse',
   'clipboard:getWatch',
   'clipboard:setWatch',
+  'settings:get',
+  'settings:update',
+  'ai:narrate',
 ] as const;
 
 /** Main → renderer, fire-and-forget. */

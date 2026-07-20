@@ -1,5 +1,6 @@
-import { ItemAnalysisSchema } from '@poe2/models';
+import { ItemAnalysisSchema, NarrativeAnalysisSchema } from '@poe2/models';
 import { z } from 'zod';
+import { SettingsPatchSchema, SettingsViewSchema } from './settings.js';
 import type { IpcChannel, IpcEvent } from './channels.js';
 
 export {
@@ -69,6 +70,27 @@ export const ipcContract = {
   'clipboard:setWatch': {
     request: z.object({ enabled: z.boolean() }),
     response: z.object({ enabled: z.boolean() }),
+  },
+
+  'settings:get': {
+    request: z.null(),
+    /** Never includes the API key — only whether one is stored. */
+    response: SettingsViewSchema,
+  },
+  'settings:update': {
+    request: SettingsPatchSchema,
+    response: resultSchema(SettingsViewSchema),
+  },
+
+  /**
+   * Layer 2. Takes the item's raw text rather than an analysis object: main
+   * re-derives the deterministic analysis itself (sub-millisecond) so the model
+   * can only ever be asked to explain something main computed. Accepting an
+   * analysis from the renderer would let it dictate what the model "explains".
+   */
+  'ai:narrate': {
+    request: z.object({ raw: z.string() }),
+    response: resultSchema(NarrativeAnalysisSchema),
   },
 } as const satisfies Record<IpcChannel, { request: z.ZodTypeAny; response: z.ZodTypeAny }>;
 

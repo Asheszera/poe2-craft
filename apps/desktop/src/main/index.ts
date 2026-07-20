@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import { app, BrowserWindow, clipboard, shell } from 'electron';
+import { app, BrowserWindow, clipboard, safeStorage, shell } from 'electron';
 import { looksLikeItem } from '@poe2/parser';
 import { affixBudget, affixMods, intrinsicMods } from '@poe2/models';
 import { unmatchedMods } from '@poe2/data';
@@ -7,7 +7,22 @@ import { analyzeText } from './analysis/pipeline.js';
 import { registerIpcHandlers } from './ipc/registry.js';
 import { createHandlers } from './ipc/handlers.js';
 import { ClipboardWatcher } from './clipboard/watcher.js';
+import { SettingsStore } from './settings/store.js';
 import type { IpcEventPayload } from '../shared/ipc.js';
+
+/**
+ * Set before anything reads a user path.
+ *
+ * Electron derives its data directories from the app name, which defaults to
+ * the `name` field in package.json — here the scoped `@poe2/desktop`, which
+ * produced `%APPDATA%\@poe2\desktop`. `sessionData` (Chromium's caches) is
+ * resolved separately from `userData`, so both are pinned explicitly: naming
+ * the app alone leaves the browser caches behind in the old folder.
+ */
+const APP_NAME = 'PoE2 AI Assistant';
+app.setName(APP_NAME);
+app.setPath('userData', join(app.getPath('appData'), APP_NAME));
+app.setPath('sessionData', app.getPath('userData'));
 
 const isDev = !app.isPackaged;
 
@@ -117,9 +132,16 @@ if (!app.requestSingleInstanceLock()) {
   });
 
   void app.whenReady().then(() => {
-    registerIpcHandlers(createHandlers({ watcher }));
+    // `userData` is only resolvable after the app is ready, so the store is
+    // constructed here rather than at module scope.
+    const settings = new SettingsStore(
+      join(app.getPath('userData'), 'settings.json'),
+      safeStorage,
+    );
+
+    registerIpcHandlers(createHandlers({ watcher, settings }));
     createMainWindow();
-    watcher.start();
+    watcher.setEnabled(settings.settings.clipboardWatch);
 
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) createMainWindow();
