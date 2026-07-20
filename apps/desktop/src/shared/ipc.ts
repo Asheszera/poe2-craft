@@ -1,4 +1,4 @@
-import { ParsedItemSchema } from '@poe2/models';
+import { ItemAnalysisSchema } from '@poe2/models';
 import { z } from 'zod';
 import type { IpcChannel, IpcEvent } from './channels.js';
 
@@ -48,7 +48,7 @@ export const ipcContract = {
   /** Parses arbitrary text. Used by the manual paste flow. */
   'item:parse': {
     request: z.object({ raw: z.string() }),
-    response: resultSchema(ParsedItemSchema),
+    response: resultSchema(ItemAnalysisSchema),
   },
   /**
    * Reads the system clipboard and parses it in one round trip.
@@ -59,7 +59,7 @@ export const ipcContract = {
    */
   'clipboard:parse': {
     request: z.null(),
-    response: resultSchema(ParsedItemSchema),
+    response: resultSchema(ItemAnalysisSchema),
   },
   /** Whether the background clipboard watcher is currently polling. */
   'clipboard:getWatch': {
@@ -82,8 +82,8 @@ export type IpcResponse<C extends IpcChannel> = z.infer<IpcContract[C]['response
  * fire-and-forget, so there is no response to validate.
  */
 export const ipcEvents = {
-  /** A clipboard copy was recognised as an item and parsed successfully. */
-  'item:captured': ParsedItemSchema,
+  /** A clipboard copy was recognised as an item and analysed successfully. */
+  'item:captured': ItemAnalysisSchema,
 } as const satisfies Record<IpcEvent, z.ZodTypeAny>;
 
 export type IpcEventPayload<E extends IpcEvent> = z.infer<(typeof ipcEvents)[E]>;

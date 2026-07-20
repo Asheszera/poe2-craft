@@ -41,6 +41,9 @@ importers:
       '@poe2/parser':
         specifier: workspace:*
         version: link:../../packages/parser
+      '@poe2/rules':
+        specifier: workspace:*
+        version: link:../../packages/rules
       '@poe2/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -138,6 +141,28 @@ importers:
         specifier: workspace:*
         version: link:../shared
     devDependencies:
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.20.1)(lightningcss@1.32.0)
+
+  packages/rules:
+    dependencies:
+      '@poe2/models':
+        specifier: workspace:*
+        version: link:../models
+      '@poe2/shared':
+        specifier: workspace:*
+        version: link:../shared
+    devDependencies:
+      '@poe2/data':
+        specifier: workspace:*
+        version: link:../data
+      '@poe2/parser':
+        specifier: workspace:*
+        version: link:../parser
       typescript:
         specifier: ^5.7.2
         version: 5.9.3

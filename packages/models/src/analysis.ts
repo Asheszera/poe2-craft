@@ -50,6 +50,7 @@ export const DeterministicAnalysisSchema = z.object({
   /** ms spent in each stage — feeds the perf budget assertions. */
   timings: z.record(z.string(), z.number()),
 });
+export type DeterministicAnalysis = z.infer<typeof DeterministicAnalysisSchema>;
 
 /** Layer 2: free-form prose produced by the configured AI provider. */
 export const NarrativeAnalysisSchema = z.object({
@@ -59,6 +60,7 @@ export const NarrativeAnalysisSchema = z.object({
   nextBestAction: z.string(),
   model: z.string(),
 });
+export type NarrativeAnalysis = z.infer<typeof NarrativeAnalysisSchema>;
 
 export const ItemAnalysisSchema = z.object({
   item: ParsedItemSchema,

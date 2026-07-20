@@ -3,6 +3,7 @@ import { useMutation } from '@tanstack/react-query';
 import { ClipboardPaste, Loader2, ScanSearch } from 'lucide-react';
 import { invoke } from '@/lib/ipc';
 import { useAppStore } from '@/app/store';
+import { AdvicePanel } from './AdvicePanel';
 import { AutoCaptureToggle } from './AutoCaptureToggle';
 import { ItemCard } from './ItemCard';
 
@@ -16,9 +17,9 @@ import { ItemCard } from './ItemCard';
  */
 export function AnalyzerView(): React.JSX.Element {
   const [raw, setRaw] = useState('');
-  const item = useAppStore((s) => s.currentItem);
+  const analysis = useAppStore((s) => s.currentAnalysis);
   const error = useAppStore((s) => s.currentError);
-  const setCurrentItem = useAppStore((s) => s.setCurrentItem);
+  const setCurrentAnalysis = useAppStore((s) => s.setCurrentAnalysis);
   const setCurrentError = useAppStore((s) => s.setCurrentError);
 
   const analyze = useMutation({
@@ -28,8 +29,8 @@ export function AnalyzerView(): React.JSX.Element {
         : invoke('item:parse', { raw: input.raw }),
     onSuccess: (result) => {
       if (result.ok) {
-        setCurrentItem(result.value);
-        setRaw(result.value.raw);
+        setCurrentAnalysis(result.value);
+        setRaw(result.value.item.raw);
       } else {
         setCurrentError(result.error);
       }
@@ -81,10 +82,15 @@ export function AnalyzerView(): React.JSX.Element {
         </div>
       </section>
 
-      <section className="min-h-0 overflow-y-auto pr-1">
-        {item && <ItemCard key={item.raw} item={item} />}
+      <section className="flex min-h-0 flex-col gap-4 overflow-y-auto pr-1">
+        {analysis && (
+          <>
+            <AdvicePanel analysis={analysis.deterministic} />
+            <ItemCard key={analysis.item.raw} item={analysis.item} />
+          </>
+        )}
 
-        {error && !item && (
+        {error && !analysis && (
           <div className="rounded-lg border border-red-500/30 bg-red-500/5 p-4">
             <div className="font-mono text-[11px] text-red-300/70">{error.code}</div>
             <div className="mt-1 text-[13px] text-red-200">{error.message}</div>
@@ -97,7 +103,7 @@ export function AnalyzerView(): React.JSX.Element {
           </div>
         )}
 
-        {!item && !error && !analyze.isError && (
+        {!analysis && !error && !analyze.isError && (
           <div className="grid h-full place-items-center text-center text-[13px] text-ink-dim">
             <div>
               <ScanSearch size={36} strokeWidth={1.25} className="mx-auto mb-3 opacity-40" />

@@ -4,12 +4,12 @@ import tailwindcss from '@tailwindcss/vite';
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite';
 
 /**
- * The workspace packages are published as TypeScript sources (`exports` →
+ * The workspace packages are published as TypeScript sources (`exports` ->
  * `src/index.ts`), so they must be bundled into the main/preload output.
  * Letting `externalizeDepsPlugin` externalize them would emit a runtime
  * `require('@poe2/parser')` that resolves to a `.ts` file Electron cannot load.
  */
-const INTERNAL_PACKAGES = ['@poe2/shared', '@poe2/models', '@poe2/parser', '@poe2/data'];
+const INTERNAL_PACKAGES = ['@poe2/shared', '@poe2/models', '@poe2/parser', '@poe2/data', '@poe2/rules'];
 
 export default defineConfig({
   main: {
@@ -32,7 +32,7 @@ export default defineConfig({
     },
     build: {
       // `root` points at src/renderer, so outDir must be pinned back to the
-      // app package — otherwise the bundle lands in the repository root.
+      // app package - otherwise the bundle lands in the repository root.
       outDir: resolve(__dirname, 'out/renderer'),
       emptyOutDir: true,
       rollupOptions: { input: { index: resolve(__dirname, 'src/renderer/index.html') } },

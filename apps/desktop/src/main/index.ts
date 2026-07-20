@@ -80,7 +80,7 @@ const watcher = new ClipboardWatcher({
     if (!result.ok) return;
 
     if (isDev) {
-      const item = result.value;
+      const { item, deterministic } = result.value;
       const budget = affixBudget(item.rarity);
       const unknown = unmatchedMods(item).length;
       const affixes = affixMods(item);
@@ -89,9 +89,12 @@ const watcher = new ClipboardWatcher({
         .join(' ');
       console.log(
         `[capture] ${item.rarity} · ${item.name ?? item.baseType} · ` +
+          `score ${deterministic.score} · ` +
           `${affixes.length}${budget === null ? '' : `/${budget}`} affixes [${tiers}] · ` +
           `${intrinsicMods(item).length} intrinsic` +
-          (unknown > 0 ? ` · ${unknown} UNMATCHED` : ''),
+          (unknown > 0 ? ` · ${unknown} UNMATCHED` : '') +
+          ` · ${deterministic.timings['total'] ?? '?'}ms rules` +
+          ` → ${deterministic.recommendations[0]?.action ?? 'no advice'}`,
       );
     }
     broadcast('item:captured', result.value);

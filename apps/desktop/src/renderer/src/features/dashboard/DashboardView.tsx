@@ -31,7 +31,7 @@ function Metric({
  * which is the point of keeping the selectors local.
  */
 export function DashboardView(): React.JSX.Element {
-  const recentItems = useAppStore((s) => s.recentItems);
+  const recentAnalyses = useAppStore((s) => s.recentAnalyses);
   const setActiveView = useAppStore((s) => s.setActiveView);
 
   const appInfo = useQuery({
@@ -40,11 +40,12 @@ export function DashboardView(): React.JSX.Element {
     staleTime: Infinity,
   });
 
-  const rareCount = recentItems.filter((i) => i.rarity === 'Rare').length;
+  const rareCount = recentAnalyses.filter((a) => a.item.rarity === 'Rare').length;
   // Both signals mean the same thing to the user: the parser mis-read an item.
-  const withIssues = recentItems.filter(
-    (i) => i.unparsedLines.length > 0 || exceedsAffixBudget(i),
+  const withIssues = recentAnalyses.filter(
+    (a) => a.item.unparsedLines.length > 0 || exceedsAffixBudget(a.item),
   ).length;
+  const bestScore = recentAnalyses.reduce((best, a) => Math.max(best, a.deterministic.score), 0);
 
   return (
     <div className="flex flex-col gap-5">
@@ -57,8 +58,13 @@ export function DashboardView(): React.JSX.Element {
       </div>
 
       <div className="grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-3">
-        <Metric label="Items analysed" value={String(recentItems.length)} hint="this session" />
+        <Metric label="Items analysed" value={String(recentAnalyses.length)} hint="this session" />
         <Metric label="Rares" value={String(rareCount)} />
+        <Metric
+          label="Best score"
+          value={recentAnalyses.length === 0 ? '—' : String(bestScore)}
+          hint="out of 100"
+        />
         <Metric
           label="Parse warnings"
           value={String(withIssues)}
@@ -75,7 +81,7 @@ export function DashboardView(): React.JSX.Element {
         <header className="border-b border-line px-4 py-3 text-[12px] font-medium">
           Recently analysed
         </header>
-        {recentItems.length === 0 ? (
+        {recentAnalyses.length === 0 ? (
           <div className="px-4 py-8 text-center text-[13px] text-ink-dim">
             Nothing yet —{' '}
             <button
@@ -89,11 +95,11 @@ export function DashboardView(): React.JSX.Element {
           </div>
         ) : (
           <ul className="divide-y divide-line">
-            {recentItems.map((item, i) => (
+            {recentAnalyses.map(({ item, deterministic }, i) => (
               <li key={i} className="flex items-center justify-between px-4 py-2.5 text-[13px]">
                 <span className="truncate">{item.name ?? item.baseType}</span>
                 <span className="ml-4 shrink-0 font-mono text-[11px] text-ink-dim">
-                  {item.rarity} · {affixMods(item).length} affixes
+                  {item.rarity} · {affixMods(item).length} affixes · score {deterministic.score}
                 </span>
               </li>
             ))}

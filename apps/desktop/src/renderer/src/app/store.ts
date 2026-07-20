@@ -1,4 +1,4 @@
-import type { ParsedItem } from '@poe2/models';
+import type { ItemAnalysis } from '@poe2/models';
 import type { SerializableError } from '@shared/ipc';
 import { create } from 'zustand';
 import type { ViewId } from './navigation.js';
@@ -20,30 +20,30 @@ interface AppState {
   activeView: ViewId;
   setActiveView: (view: ViewId) => void;
 
-  currentItem: ParsedItem | null;
+  currentAnalysis: ItemAnalysis | null;
   currentError: SerializableError | null;
-  /** Accepts an analysed item from any source and records it as recent. */
-  setCurrentItem: (item: ParsedItem) => void;
+  /** Accepts an analysis from any source and records it as recent. */
+  setCurrentAnalysis: (analysis: ItemAnalysis) => void;
   setCurrentError: (error: SerializableError) => void;
 
-  recentItems: ParsedItem[];
-  clearRecentItems: () => void;
+  recentAnalyses: ItemAnalysis[];
+  clearRecentAnalyses: () => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
   activeView: 'analyzer',
   setActiveView: (activeView) => set({ activeView }),
 
-  currentItem: null,
+  currentAnalysis: null,
   currentError: null,
-  setCurrentItem: (item) =>
+  setCurrentAnalysis: (analysis) =>
     set((state) => ({
-      currentItem: item,
+      currentAnalysis: analysis,
       currentError: null,
-      recentItems: [item, ...state.recentItems].slice(0, MAX_RECENT),
+      recentAnalyses: [analysis, ...state.recentAnalyses].slice(0, MAX_RECENT),
     })),
-  setCurrentError: (error) => set({ currentError: error, currentItem: null }),
+  setCurrentError: (error) => set({ currentError: error, currentAnalysis: null }),
 
-  recentItems: [],
-  clearRecentItems: () => set({ recentItems: [] }),
+  recentAnalyses: [],
+  clearRecentAnalyses: () => set({ recentAnalyses: [] }),
 }));

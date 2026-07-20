@@ -1,0 +1,19 @@
+{
+  "name": "@poe2/rules",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@poe2/models": "workspace:*",
+    "@poe2/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@poe2/parser": "workspace:*",
+    "@poe2/data": "workspace:*",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

@@ -18,10 +18,10 @@ export function useItemCapture(): void {
   useEffect(() => {
     // Read from the store lazily so the effect never re-subscribes on state
     // changes; the actions themselves are stable for the store's lifetime.
-    const { setCurrentItem, setActiveView } = useAppStore.getState();
+    const { setCurrentAnalysis, setActiveView } = useAppStore.getState();
 
-    return subscribe('item:captured', (item) => {
-      setCurrentItem(item);
+    return subscribe('item:captured', (analysis) => {
+      setCurrentAnalysis(analysis);
       setActiveView('analyzer');
     });
   }, []);
