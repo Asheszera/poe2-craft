@@ -1,0 +1,25 @@
+{
+  "name": "@poe2/data",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "scrape:stats": "tsx scripts/scrape-stats.ts",
+    "scrape:mods": "tsx scripts/scrape-mods.ts",
+    "scrape": "pnpm scrape:stats && pnpm scrape:mods"
+  },
+  "dependencies": {
+    "@poe2/models": "workspace:*",
+    "@poe2/shared": "workspace:*",
+    "zod": "^4.0.5"
+  },
+  "devDependencies": {
+    "@poe2/parser": "workspace:*",
+    "tsx": "^4.20.3",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

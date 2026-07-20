@@ -1,0 +1,77 @@
+@import 'tailwindcss';
+
+/**
+ * Design tokens.
+ *
+ * Declared through Tailwind v4's `@theme` so every token is usable as a utility
+ * (`bg-surface`, `text-rarity-rare`) instead of being duplicated between a
+ * config file and hand-written CSS.
+ */
+@theme {
+  --color-base: #0a0a0c;
+  --color-surface: #131316;
+  --color-surface-2: #1a1a1f;
+  --color-surface-3: #222229;
+  --color-line: #2a2a33;
+  --color-ink: #e8e8ec;
+  --color-ink-muted: #8a8a94;
+  --color-ink-dim: #5c5c66;
+
+  --color-accent: #76b900;
+  --color-accent-soft: #9ae600;
+
+  /* Item rarity colours, matched to the in-game palette. */
+  --color-rarity-normal: #c8c8c8;
+  --color-rarity-magic: #8888ff;
+  --color-rarity-rare: #ffff77;
+  --color-rarity-unique: #af6025;
+  --color-rarity-currency: #aa9e82;
+
+  /* Modifier provenance. */
+  --color-mod-implicit: #8ca0b8;
+  --color-mod-explicit: #8888ff;
+  --color-mod-crafted: #b4b4ff;
+  --color-mod-fractured: #a29160;
+  --color-mod-rune: #7ac0d4;
+  --color-mod-enchant: #b4b4ff;
+  --color-mod-desecrated: #d20000;
+  --color-mod-sanctum: #b4b4ff;
+  --color-mod-scourge: #ff6e25;
+
+  --font-sans: 'Segoe UI Variable Display', 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'Cascadia Mono', 'Consolas', ui-monospace, monospace;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background-color: var(--color-base);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  overflow: hidden;
+  user-select: none;
+}
+
+/* Text the user may legitimately want to copy back out. */
+.selectable {
+  user-select: text;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-surface-3);
+  border-radius: 5px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-line);
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}

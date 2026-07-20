@@ -1,0 +1,16 @@
+{
+  "name": "@poe2/models",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@poe2/shared": "workspace:*",
+    "zod": "^4.0.5"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2"
+  }
+}

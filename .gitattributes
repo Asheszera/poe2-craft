@@ -1,0 +1,11 @@
+# Normalize to LF in the repository regardless of the checkout platform.
+# Prettier is configured with `endOfLine: lf`, so without this every file
+# committed from Windows would churn between LF and CRLF.
+* text=auto eol=lf
+
+# Generated knowledge base: large, machine-written, and not worth reviewing
+# line by line in a diff.
+packages/data/data/*.json linguist-generated=true diff=json
+
+# Lockfile is generated; keep it out of diff review too.
+pnpm-lock.yaml linguist-generated=true -diff

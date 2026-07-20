@@ -1,0 +1,10 @@
+packages:
+  - 'apps/*'
+  - 'packages/*'
+
+# pnpm 10 refuses to run dependency install scripts unless they are named here.
+# Electron's postinstall is what downloads the actual binary — without this the
+# app builds fine and then fails at launch with "Electron uninstall".
+onlyBuiltDependencies:
+  - electron
+  - esbuild
