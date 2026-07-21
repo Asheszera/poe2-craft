@@ -32,6 +32,18 @@ const RawModSchema = z.object({
   type: z.string(),
   text: z.string().optional(),
   stats: z.array(z.object({ id: z.string(), min: z.number(), max: z.number() })),
+  /**
+   * Mutual-exclusion families. An item carries at most one modifier per group,
+   * and the group is *not* the same thing as `type`: 1567 of 2586 item affixes
+   * disagree, and 70 groups span more than one ladder — `FireResistance` covers
+   * both plain fire resistance and the resistance-and-maximum hybrid. Advice
+   * that ignores this suggests modifiers the item can no longer roll.
+   */
+  groups: z.array(z.string()).default([]),
+  /** What the modifier *is about* — `life`, `attack`, `caster`, `elemental`. */
+  implicit_tags: z.array(z.string()).default([]),
+  /** Tags the modifier grants the item, which then gate other modifiers. */
+  adds_tags: z.array(z.string()).default([]),
 });
 
 /**
@@ -92,6 +104,11 @@ async function main(): Promise<void> {
       requiredLevel: mod.data.required_level,
       key,
       ranges: stats.map((s) => ({ min: s.min, max: s.max })),
+      groups: mod.data.groups,
+      // Both sets describe the same thing from the pool's point of view — what
+      // this modifier is about — so they are merged and de-duplicated here
+      // rather than asking every consumer to remember the distinction.
+      tags: [...new Set([...mod.data.implicit_tags, ...mod.data.adds_tags])].sort(),
     } satisfies Omit<ModEntry, 'tier' | 'tierTotal'>;
 
     const ladderKey = `${entry.type}|${key}|${generation_type}`;

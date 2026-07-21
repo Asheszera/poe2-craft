@@ -42,6 +42,13 @@ export const PoolOptionSchema = z.object({
   tierTotal: z.number().int(),
   requiredLevel: z.number().int(),
   topTierLevel: z.number().int().nullable(),
+  /** What the modifier is about: `life`, `attack`, `caster`, `elemental`, … */
+  tags: z.array(z.string()),
+  /**
+   * The exclusion group a modifier already on the item occupies, when this
+   * option shares it — meaning the item can no longer roll it.
+   */
+  blockedBy: z.string().nullable(),
 });
 export type PoolOption = z.infer<typeof PoolOptionSchema>;
 

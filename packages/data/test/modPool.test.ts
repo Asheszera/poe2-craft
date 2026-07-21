@@ -61,4 +61,60 @@ describe('what a base can still roll', () => {
     const uncapped = pool.options('Pauascale Gloves', null);
     expect(uncapped.suffix.length).toBeGreaterThanOrEqual(capped.suffix.length);
   });
+
+  it('carries the modifier tags an intent can be matched against', () => {
+    const options = pool.options('Pauascale Gloves', 80);
+    const attackSpeed = options.suffix.find((o) => o.key.includes('attack speed'));
+
+    // "More DPS" is not a modifier; `attack`, `speed`, `caster` are how a craft
+    // intent reaches the pool at all.
+    expect(attackSpeed?.tags).toContain('attack');
+  });
+});
+
+/**
+ * An item carries at most one modifier per exclusion group, and the group is
+ * not the template. Missing this is not a cosmetic flaw: it makes the advisor
+ * recommend currency on an outcome the item can never produce.
+ */
+describe('modifiers the item can no longer roll', () => {
+  const FLASK_LIFE = '#% increased flask life recovery rate';
+  const FLASK_MANA = '#% increased flask mana recovery rate';
+
+  const belt = (present: string[]) =>
+    pool.options('Rawhide Belt', 80, present).prefix.filter((o) => o.key.includes('flask'));
+
+  it('leaves everything open on an item with nothing on it', () => {
+    expect(belt([]).every((o) => o.blockedBy === null)).toBe(true);
+  });
+
+  it('blocks the modifier that is already there', () => {
+    const life = belt([FLASK_LIFE]).find((o) => o.key === FLASK_LIFE);
+    expect(life?.blockedBy).toBe('BeltFlaskRecoveryRate');
+  });
+
+  it('blocks a different modifier sharing the same group', () => {
+    // The whole point: flask *mana* recovery has its own template and its own
+    // ladder, so matching on text alone would offer it — but the group is
+    // taken, and the item cannot roll it.
+    const mana = belt([FLASK_LIFE]).find((o) => o.key === FLASK_MANA);
+    expect(mana?.blockedBy).toBe('BeltFlaskRecoveryRate');
+  });
+
+  it('reports blocked options instead of dropping them', () => {
+    // "You cannot have both" is advice; a silently shorter list is not.
+    expect(belt([FLASK_LIFE])).toHaveLength(belt([]).length);
+  });
+
+  it('sorts blocked options last', () => {
+    const options = pool.options('Rawhide Belt', 80, [FLASK_LIFE]).prefix;
+    const firstBlocked = options.findIndex((o) => o.blockedBy !== null);
+    const lastOpen = options.map((o) => o.blockedBy).lastIndexOf(null);
+
+    expect(firstBlocked).toBeGreaterThan(lastOpen);
+  });
+
+  it('ignores modifier texts the dataset does not know', () => {
+    expect(pool.occupiedGroups(['not a modifier at all']).size).toBe(0);
+  });
 });

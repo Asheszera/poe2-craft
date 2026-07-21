@@ -24,6 +24,14 @@ export interface PoolOption {
   readonly requiredLevel: number;
   /** Item level needed for tier 1, or null when tier 1 is unreachable here. */
   readonly topTierLevel: number | null;
+  /** What the modifier is about: `life`, `attack`, `caster`, `elemental`, … */
+  readonly tags: string[];
+  /**
+   * Set when a modifier already on the item occupies this option's group, so
+   * it can no longer roll. Names the blocking group — reported rather than
+   * filtered away, because "you cannot have both" is itself the advice.
+   */
+  readonly blockedBy: string | null;
 }
 
 export interface PoolOptions {
@@ -36,10 +44,33 @@ const EMPTY: PoolOptions = { prefix: [], suffix: [] };
 export class ModPoolIndex {
   readonly #dataset: ModPoolDataset;
   readonly #modsById = new Map<string, ModEntry>();
+  /** Canonical template → the groups any modifier with that text belongs to. */
+  readonly #groupsByKey = new Map<string, Set<string>>();
 
   constructor(dataset: ModPoolDataset, mods: ModDataset) {
     this.#dataset = dataset;
-    for (const entry of mods.entries) this.#modsById.set(entry.id, entry);
+    for (const entry of mods.entries) {
+      this.#modsById.set(entry.id, entry);
+
+      let groups = this.#groupsByKey.get(entry.key);
+      if (!groups) this.#groupsByKey.set(entry.key, (groups = new Set()));
+      for (const group of entry.groups) groups.add(group);
+    }
+  }
+
+  /**
+   * The exclusion groups a set of modifier texts occupies.
+   *
+   * Keyed by template rather than by resolved tier, because which tier rolled
+   * does not change what it blocks — and the template is what survives when the
+   * tier cannot be inferred at all.
+   */
+  occupiedGroups(keys: readonly string[]): Set<string> {
+    const occupied = new Set<string>();
+    for (const key of keys) {
+      for (const group of this.#groupsByKey.get(key) ?? []) occupied.add(group);
+    }
+    return occupied;
   }
 
   get baseCount(): number {
@@ -57,22 +88,30 @@ export class ModPoolIndex {
    *
    * @param itemLevel Null is treated as "no ceiling", which over-reports rather
    *   than under-reports: an unknown level should not hide options.
+   * @param presentKeys Canonical templates already on the item. Options whose
+   *   exclusion group one of them occupies come back marked `blockedBy`.
    */
-  options(baseName: string, itemLevel: number | null): PoolOptions {
+  options(baseName: string, itemLevel: number | null, presentKeys: readonly string[] = []): PoolOptions {
     const base = this.#dataset.bases[baseName];
     if (!base) return EMPTY;
 
     const pool = this.#dataset.groups[base.group];
     if (!pool) return EMPTY;
 
+    const occupied = this.occupiedGroups(presentKeys);
+
     return {
-      prefix: this.#collapse(pool.prefix, itemLevel),
-      suffix: this.#collapse(pool.suffix, itemLevel),
+      prefix: this.#collapse(pool.prefix, itemLevel, occupied),
+      suffix: this.#collapse(pool.suffix, itemLevel, occupied),
     };
   }
 
   /** One option per ladder: the best tier reachable, plus where the top sits. */
-  #collapse(pool: Record<string, number>, itemLevel: number | null): PoolOption[] {
+  #collapse(
+    pool: Record<string, number>,
+    itemLevel: number | null,
+    occupied: ReadonlySet<string>,
+  ): PoolOption[] {
     const byLadder = new Map<string, PoolOption & { topTierLevel: number | null }>();
 
     for (const [modId, requiredLevel] of Object.entries(pool)) {
@@ -102,14 +141,23 @@ export class ModPoolIndex {
           tierTotal: entry.tierTotal,
           requiredLevel,
           topTierLevel,
+          tags: entry.tags,
+          blockedBy: entry.groups.find((group) => occupied.has(group)) ?? null,
         });
       } else {
         byLadder.set(ladder, { ...current, topTierLevel });
       }
     }
 
+    // Blocked options sink to the bottom: still visible, never mistaken for
+    // something the item can actually roll next.
     return [...byLadder.values()]
       .filter((option) => option.bestTier > 0)
-      .sort((a, b) => a.bestTier - b.bestTier || a.key.localeCompare(b.key));
+      .sort(
+        (a, b) =>
+          Number(a.blockedBy !== null) - Number(b.blockedBy !== null) ||
+          a.bestTier - b.bestTier ||
+          a.key.localeCompare(b.key),
+      );
   }
 }

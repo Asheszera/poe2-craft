@@ -138,8 +138,46 @@ Item Level: 69
     );
 
     expect(prompt).toContain('What this base can still roll');
-    expect(prompt).toMatch(/prefixes \(\d+ available\)/);
+    expect(prompt).toMatch(/prefixes \(\d+ available/);
     expect(prompt).toMatch(/best here is T\d+\/\d+/);
+  });
+
+  it('tags each option so an intent can reach it', () => {
+    const prompt = buildCraftPrompt(
+      requestFor(`Item Class: Gloves
+Rarity: Rare
+Corpse Claw
+Pauascale Gloves
+--------
+Item Level: 69
+--------
++80 to maximum Mana
+`),
+    );
+
+    // "More DPS" is not the name of any modifier. Without tags the model has to
+    // guess which lines serve the goal the player actually stated.
+    expect(prompt).toMatch(/\[[a-z_ ]*attack[a-z_ ]*\]/);
+  });
+
+  it('leaves out modifiers the item can no longer roll', () => {
+    // Flask life recovery blocks flask *mana* recovery: same exclusion group,
+    // different text, different ladder. Offering it would be advice to spend
+    // currency on an outcome the item cannot produce.
+    const prompt = buildCraftPrompt(
+      requestFor(`Item Class: Belts
+Rarity: Rare
+Woe Cord
+Rawhide Belt
+--------
+Item Level: 80
+--------
+20% increased Flask Life Recovery rate
+`),
+    );
+
+    expect(prompt).not.toContain('Flask Mana Recovery');
+    expect(prompt).toMatch(/blocked by modifiers already on it/);
   });
 
   it('names the real currency catalogue rather than relying on recall', () => {

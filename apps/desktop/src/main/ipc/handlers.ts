@@ -169,7 +169,11 @@ export const createHandlers = ({
 
     const { item } = analysis.value;
     const pool = defaultModPool();
-    const options = pool.options(item.baseType, item.itemLevel);
+    const present = item.mods.map((mod) => canonicalTemplate(mod.template));
+    // The item's own modifiers are part of the question, not an afterthought:
+    // each one closes its exclusion group, and an option in a closed group is
+    // not an option.
+    const options = pool.options(item.baseType, item.itemLevel, present);
 
     return {
       known: pool.knows(item.baseType),
@@ -177,7 +181,7 @@ export const createHandlers = ({
       itemLevel: item.itemLevel,
       prefix: options.prefix,
       suffix: options.suffix,
-      present: item.mods.map((mod) => canonicalTemplate(mod.template)),
+      present,
     };
   },
 

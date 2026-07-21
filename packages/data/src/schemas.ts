@@ -78,6 +78,16 @@ export const ModEntrySchema = z.object({
   key: z.string().min(1),
   /** Value window per numeric placeholder, in order of appearance. */
   ranges: z.array(ValueRangeSchema),
+  /**
+   * Mutual-exclusion families: an item carries at most one modifier per group.
+   *
+   * Distinct from `type`. `FireResistance` and `FireResistanceAndMax` are two
+   * ladders in one group, so an item with plain fire resistance cannot roll the
+   * hybrid — which is exactly the kind of thing craft advice must not miss.
+   */
+  groups: z.array(z.string()),
+  /** What the modifier is about: `life`, `attack`, `caster`, `elemental`, … */
+  tags: z.array(z.string()),
   tier: z.number().int().positive(),
   tierTotal: z.number().int().positive(),
 });

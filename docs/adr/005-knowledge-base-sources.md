@@ -48,3 +48,29 @@ is therefore almost certainly not a modifier — it is a property or description
 line the block classifier mis-routed. `unmatchedMods()` turns the knowledge base
 into a parser self-test that runs against real items in production, which is
 strictly better than trusting hand-written fixtures.
+
+## Addendum (2026-07-21) — exclusion groups in, spawn weights out
+
+Re-reading the datamined export turned up two fields the first pass discarded,
+and one absence worth writing down so nobody goes looking twice.
+
+**Kept: `groups`.** An item carries at most one modifier per exclusion group,
+and the group is *not* the ladder `type` — 1567 of 2586 item affixes disagree,
+and 70 groups span more than one ladder. On a Rawhide Belt, increased flask
+*life* recovery and increased flask *mana* recovery share the group
+`BeltFlaskRecoveryRate`: different text, different ladder, mutually exclusive.
+Matching on the modifier's text alone offered the second one on an item that
+could never roll it — 2 of 7 prefixes wrongly listed on that base. `ModPoolIndex`
+now marks those `blockedBy`, and the prompt drops them entirely.
+
+**Kept: `implicit_tags` + `adds_tags`.** 64 tags — `life`, `attack`, `caster`,
+`elemental`, `defences` — merged into `ModEntry.tags`. This is how a stated
+intent reaches the pool at all: "more DPS" is not the name of any modifier, and
+without tags the model has to guess which lines serve the goal.
+
+**Not available: spawn weights.** `spawn_weights` exists but every weight in the
+entire export is 0 or 1 — eligibility, not rarity. So this dataset supports
+"which modifiers can roll here", never "how likely each one is". No expected-cost
+or probability model can be built on it, and one built anyway would be inventing
+the precision that makes it look trustworthy. If weighted data ever appears, it
+belongs here; until then the advisor counts options and does not price gambles.

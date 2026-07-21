@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Check, Lock, Search } from 'lucide-react';
+import { Ban, Check, Lock, Search } from 'lucide-react';
 import type { PoolOption } from '@shared/ipc';
 
 /**
@@ -9,6 +9,13 @@ import type { PoolOption } from '@shared/ipc';
  * player closes the gap where they had to take the model's word for what was
  * possible. Options already on the item are kept in the list but marked, since
  * "you already have the good one" is as useful as "this is available".
+ *
+ * Two ways a modifier can be unavailable, and they read differently:
+ *  - it is *already on the item*, or
+ *  - something else on the item occupies its exclusion group. A belt with
+ *    increased flask life recovery can never roll flask *mana* recovery — a
+ *    different modifier with different text and its own tier ladder. Marking
+ *    only exact matches would show that one as an opportunity.
  *
  * Sorted by reachable tier, so what is worth chasing is at the top.
  */
@@ -29,8 +36,14 @@ export function PoolList({
   const visible = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return options.filter((option) => {
-      if (hideTaken && present.has(option.key)) return false;
-      return needle.length === 0 || option.text.toLowerCase().includes(needle);
+      if (hideTaken && (option.blockedBy !== null || present.has(option.key))) return false;
+      // Tags are searchable too: "attack" or "life" is how a player thinks about
+      // what they want, and it is rarely a word in the modifier's own text.
+      return (
+        needle.length === 0 ||
+        option.text.toLowerCase().includes(needle) ||
+        option.tags.some((tag) => tag.includes(needle))
+      );
     });
   }, [options, present, query, hideTaken]);
 
@@ -61,9 +74,13 @@ export function PoolList({
                 ? 'border-line bg-surface-2 text-ink-muted'
                 : 'border-accent/40 bg-accent/10 text-accent',
             ].join(' ')}
-            title={hideTaken ? 'Showing only what is missing' : 'Showing everything'}
+            title={
+              hideTaken
+                ? 'Showing only what this item can still roll'
+                : 'Showing everything, including what is blocked'
+            }
           >
-            {hideTaken ? 'missing only' : 'all'}
+            {hideTaken ? 'available only' : 'all'}
           </button>
         </div>
       </header>
@@ -77,6 +94,9 @@ export function PoolList({
 
         {visible.map((option) => {
           const taken = present.has(option.key);
+          // Blocked *and* not on the item: a different modifier holds the group.
+          const excluded = option.blockedBy !== null && !taken;
+          const unavailable = taken || excluded;
           // Tier 1 out of reach is the single most actionable fact here: it
           // means a higher-level base is the real upgrade, not more currency.
           const gated = option.bestTier > 1 && option.topTierLevel !== null;
@@ -85,7 +105,10 @@ export function PoolList({
             <li key={`${option.type}-${option.key}`} className="flex flex-col gap-0.5 px-3 py-2">
               <div className="flex items-baseline gap-2">
                 {taken && <Check size={11} className="shrink-0 text-accent" />}
-                <span className={`text-[12px] ${taken ? 'text-ink-dim line-through' : 'text-ink'}`}>
+                {excluded && <Ban size={11} className="shrink-0 text-ink-dim" />}
+                <span
+                  className={`text-[12px] ${unavailable ? 'text-ink-dim line-through' : 'text-ink'}`}
+                >
                   {option.text}
                 </span>
               </div>
@@ -94,11 +117,19 @@ export function PoolList({
                 <span className={option.bestTier === 1 ? 'text-accent' : undefined}>
                   best T{option.bestTier}/{option.tierTotal}
                 </span>
+                {excluded && (
+                  <span className="text-ink-muted">
+                    blocked — this item already has a {option.blockedBy} modifier
+                  </span>
+                )}
                 {gated && (
                   <span className="flex items-center gap-1 text-amber-300/70">
                     <Lock size={9} />T1 needs ilvl {option.topTierLevel}
                     {itemLevel !== null && ` (yours: ${itemLevel})`}
                   </span>
+                )}
+                {option.tags.length > 0 && (
+                  <span className="text-ink-dim/70">{option.tags.slice(0, 4).join(' ')}</span>
                 )}
               </div>
             </li>

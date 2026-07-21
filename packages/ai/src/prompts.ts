@@ -89,9 +89,16 @@ const MAX_POOL_OPTIONS = 24;
 /**
  * The modifiers this item could still gain, and how good they can get.
  *
- * Modifiers already on the item are removed: a plan is about what is missing.
- * Every line carries the ceiling this item level allows, so the model cannot
- * propose chasing a tier the item can never reach.
+ * Three filters, each removing a way the model could propose wasted currency:
+ *  - modifiers already on the item, because a plan is about what is missing;
+ *  - modifiers whose exclusion group is occupied, which the item can never roll
+ *    however much currency is spent on it — and which are not detectable from
+ *    the text, since the blocker often reads nothing like the blocked modifier;
+ *  - tiers above the item level, carried per line as an explicit ceiling.
+ *
+ * Each line also carries the modifier's tags. A player asking for "more DPS" is
+ * not asking for a modifier named DPS; the tags are what connect that intent to
+ * `attack`, `caster`, `elemental` or an attribute that scales their skill.
  */
 function describePool(item: ParsedItem): string {
   const pool = defaultModPool();
@@ -100,11 +107,14 @@ function describePool(item: ParsedItem): string {
   }
 
   const present = new Set(item.mods.map((mod) => canonicalTemplate(mod.template)));
-  const options = pool.options(item.baseType, item.itemLevel);
+  const options = pool.options(item.baseType, item.itemLevel, [...present]);
 
   const side = (label: string, list: PoolOption[]): string => {
-    const available = list.filter((option) => !present.has(option.key));
-    if (available.length === 0) return `  - ${label}: nothing further available`;
+    const available = list.filter((option) => option.blockedBy === null && !present.has(option.key));
+    const blocked = list.length - available.length;
+    const note = blocked === 0 ? '' : ` — ${blocked} others are blocked by modifiers already on it`;
+
+    if (available.length === 0) return `  - ${label}: nothing further available${note}`;
 
     const shown = available.slice(0, MAX_POOL_OPTIONS).map((option) => {
       const ceiling =
@@ -112,12 +122,13 @@ function describePool(item: ParsedItem): string {
           ? 'tier 1 reachable'
           : `best here is T${option.bestTier}/${option.tierTotal}` +
             (option.topTierLevel === null ? '' : `, T1 needs ilvl ${option.topTierLevel}`);
-      return `    - ${option.text} — ${ceiling}`;
+      const tags = option.tags.length > 0 ? ` [${option.tags.join(' ')}]` : '';
+      return `    - ${option.text} — ${ceiling}${tags}`;
     });
 
     const more =
       available.length > shown.length ? `\n    - (${available.length - shown.length} more)` : '';
-    return `  - ${label} (${available.length} available):\n${shown.join('\n')}${more}`;
+    return `  - ${label} (${available.length} available${note}):\n${shown.join('\n')}${more}`;
   };
 
   return `${side('prefixes', options.prefix)}\n${side('suffixes', options.suffix)}`;
