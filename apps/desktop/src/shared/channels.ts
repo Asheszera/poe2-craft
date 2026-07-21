@@ -26,10 +26,11 @@ export const IPC_CHANNELS = [
   'history:remove',
   'history:clear',
   'craft:pool',
+  'build:evaluate',
 ] as const;
 
 /** Main → renderer, fire-and-forget. */
-export const IPC_EVENTS = ['item:captured'] as const;
+export const IPC_EVENTS = ['item:captured', 'overlay:show'] as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[number];
 export type IpcEvent = (typeof IPC_EVENTS)[number];

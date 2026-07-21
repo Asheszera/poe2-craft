@@ -1,4 +1,10 @@
-import type { AnalysisContext, DeterministicAnalysis, NarrativeAnalysis, ParsedItem } from '@poe2/models';
+import type {
+  AnalysisContext,
+  BuildVerdict,
+  DeterministicAnalysis,
+  NarrativeAnalysis,
+  ParsedItem,
+} from '@poe2/models';
 import type { PriceTable } from '@poe2/prices';
 import type { Result } from '@poe2/shared';
 
@@ -58,6 +64,22 @@ export interface AIProvider {
    * refusal are all expected conditions the UI must render, not crashes.
    */
   narrate(request: NarrativeRequest, signal?: AbortSignal): Promise<Result<NarrativeResponse>>;
+
+  /**
+   * Judges the item against the player's build.
+   *
+   * A separate operation rather than a flag on `narrate`: the two answer
+   * different questions ("how do I improve this?" versus "does this serve me?")
+   * and return different shapes. Folding them together would mean one prompt
+   * hedging between both and one schema with half its fields empty.
+   */
+  evaluateBuild(request: NarrativeRequest, signal?: AbortSignal): Promise<Result<BuildResponse>>;
+}
+
+export interface BuildResponse {
+  readonly verdict: BuildVerdict;
+  readonly usage: AIUsage;
+  readonly elapsedMs: number;
 }
 
 /** Optional capability — implemented only once RAG needs it (stage 4). */

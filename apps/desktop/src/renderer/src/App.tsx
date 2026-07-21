@@ -5,6 +5,7 @@ import { ComingSoon } from '@/components/ComingSoon';
 import { Sidebar } from '@/components/Sidebar';
 import { TitleBar } from '@/components/TitleBar';
 import { AnalyzerView } from '@/features/analyzer/AnalyzerView';
+import { BuildAdvisorView } from '@/features/build/BuildAdvisorView';
 import { CraftAdvisorView } from '@/features/craft/CraftAdvisorView';
 import { DashboardView } from '@/features/dashboard/DashboardView';
 import { SettingsView } from '@/features/settings/SettingsView';
@@ -25,6 +26,8 @@ function ActiveView(): React.JSX.Element {
       return <DashboardView />;
     case 'analyzer':
       return <AnalyzerView />;
+    case 'build':
+      return <BuildAdvisorView />;
     case 'craft':
       return <CraftAdvisorView />;
     case 'settings':

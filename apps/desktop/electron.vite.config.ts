@@ -35,7 +35,14 @@ export default defineConfig({
       // app package - otherwise the bundle lands in the repository root.
       outDir: resolve(__dirname, 'out/renderer'),
       emptyOutDir: true,
-      rollupOptions: { input: { index: resolve(__dirname, 'src/renderer/index.html') } },
+      rollupOptions: {
+        input: {
+          index: resolve(__dirname, 'src/renderer/index.html'),
+          // The overlay is its own entry rather than a route: it is created on
+          // a hot path and needs none of the main window's machinery.
+          overlay: resolve(__dirname, 'src/renderer/overlay.html'),
+        },
+      },
     },
   },
 });

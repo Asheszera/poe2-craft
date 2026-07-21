@@ -102,6 +102,32 @@ export const ItemAnalysisSchema = z.object({
 export type ItemAnalysis = z.infer<typeof ItemAnalysisSchema>;
 
 /**
+ * How well an item serves a specific build.
+ *
+ * Kept apart from `DeterministicAnalysis.score` on purpose. That score is
+ * computed from affix tiers and slot usage — reproducible, and true regardless
+ * of who is holding the item. This one is a model's judgement about a skill and
+ * an ascendancy, which no dataset here can verify. Merging them into one number
+ * would launder an opinion into a measurement.
+ */
+export const BuildVerdictSchema = z.object({
+  /** 0..100, for this build specifically. The model's opinion, labelled so. */
+  score: z.number().min(0).max(100),
+  /** What to actually do with it. */
+  verdict: z.enum(['equip', 'craft', 'sell', 'vendor', 'unclear']),
+  /** Why, in the player's terms. */
+  reasoning: z.string(),
+  /** Modifiers that help this build, and how. */
+  whatWorks: z.array(z.string()),
+  /** What the item lacks for this build. */
+  whatIsMissing: z.array(z.string()),
+  /** Anything the model needed but was not told. */
+  assumptions: z.array(z.string()).default([]),
+  model: z.string(),
+});
+export type BuildVerdict = z.infer<typeof BuildVerdictSchema>;
+
+/**
  * A stored analysis.
  *
  * Denormalised on purpose: the list and the dashboard read `score`, `rarity`

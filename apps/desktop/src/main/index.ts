@@ -10,6 +10,8 @@ import { createHandlers, recordAnalysis } from './ipc/handlers.js';
 import { SqliteHistoryRepository } from './history/sqlite.js';
 import { ClipboardWatcher } from './clipboard/watcher.js';
 import { SettingsStore } from './settings/store.js';
+import { OverlayWindow } from './overlay/window.js';
+import type { ItemAnalysis } from '@poe2/models';
 import type { IpcEventPayload } from '../shared/ipc.js';
 
 /**
@@ -75,6 +77,23 @@ function createMainWindow(): BrowserWindow {
 
 /** Set once the app is ready; the clipboard watcher starts before that. */
 let captureHistory: SqliteHistoryRepository | null = null;
+let overlay: OverlayWindow | null = null;
+let overlaySettings: SettingsStore | null = null;
+
+/**
+ * Shows the overlay for a fresh capture, when it would actually help.
+ *
+ * Suppressed while the app's own window has focus: the same analysis is already
+ * on screen there, and a floating duplicate of what you are looking at is
+ * noise. The overlay exists for the case where the player is in the game.
+ */
+function showOverlay(analysis: ItemAnalysis): void {
+  const settings = overlaySettings?.settings;
+  if (!settings?.overlayEnabled || !overlay) return;
+  if (BrowserWindow.getAllWindows().some((window) => window.isFocused())) return;
+
+  overlay.show(analysis, settings.overlayCorner, settings.overlayDurationMs);
+}
 
 /** Pushes an event to every open window. */
 function broadcast<E extends 'item:captured'>(event: E, payload: IpcEventPayload<E>): void {
@@ -124,10 +143,14 @@ const watcher = new ClipboardWatcher({
       );
     }
     broadcast('item:captured', result.value);
+    showOverlay(result.value);
   },
 });
 
-app.on('will-quit', () => watcher.stop());
+app.on('will-quit', () => {
+  watcher.stop();
+  overlay?.destroy();
+});
 
 // A second instance would fight over the global hotkey (stage 4), so it is
 // rejected up front and focuses the existing window instead.
@@ -156,6 +179,12 @@ if (!app.requestSingleInstanceLock()) {
       createHandlers({ watcher, settings, history, aiDebug: createAiDebugLogger(isDev) }),
     );
     captureHistory = history;
+    overlaySettings = settings;
+    overlay = new OverlayWindow({
+      preload: join(__dirname, '../preload/index.js'),
+      devUrl: process.env['ELECTRON_RENDERER_URL'],
+      rendererDir: join(__dirname, '../renderer'),
+    });
     createMainWindow();
     watcher.setEnabled(settings.settings.clipboardWatch);
 

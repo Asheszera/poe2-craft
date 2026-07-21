@@ -309,6 +309,62 @@ export function SettingsView(): React.JSX.Element {
         </div>
       </section>
 
+      <section className="flex flex-col gap-4 rounded-lg border border-line bg-surface p-5">
+        <div>
+          <h2 className="text-[12px] font-medium">In-game overlay</h2>
+          <p className="mt-1 text-[11px] text-ink-dim">
+            Shows the verdict over the game after a capture, then fades. It is click-through, so it
+            never takes a click from the game — but it only appears if the game runs in{' '}
+            <strong className="text-ink-muted">Windowed Fullscreen</strong>. Exclusive fullscreen
+            owns the display and nothing can draw above it.
+          </p>
+        </div>
+
+        <label className="flex items-center gap-2 text-[12px] text-ink">
+          <input
+            type="checkbox"
+            checked={data.overlayEnabled}
+            onChange={(e) => patch({ overlayEnabled: e.target.checked })}
+            className="size-3.5 accent-accent"
+          />
+          Show the overlay
+        </label>
+
+        {data.overlayEnabled && (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Corner">
+              <select
+                value={data.overlayCorner}
+                onChange={(e) => patch({ overlayCorner: e.target.value as typeof data.overlayCorner })}
+                className={inputClass}
+              >
+                {(['top-left', 'top-right', 'bottom-left', 'bottom-right'] as const).map((corner) => (
+                  <option key={corner} value={corner}>
+                    {corner.replace('-', ' ')}
+                  </option>
+                ))}
+              </select>
+            </Field>
+
+            <Field label="Visible for" hint="Seconds before it fades on its own.">
+              <input
+                type="number"
+                min={1}
+                max={60}
+                value={Math.round(data.overlayDurationMs / 1000)}
+                onChange={(e) => {
+                  const seconds = Number(e.target.value);
+                  if (Number.isFinite(seconds) && seconds >= 1 && seconds <= 60) {
+                    patch({ overlayDurationMs: seconds * 1000 });
+                  }
+                }}
+                className={inputClass}
+              />
+            </Field>
+          </div>
+        )}
+      </section>
+
       <PriceSettings prices={data.currencyPrices} onChange={(p) => patch({ currencyPrices: p })} />
 
       {failure && (

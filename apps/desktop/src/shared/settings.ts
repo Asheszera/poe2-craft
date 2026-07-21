@@ -51,6 +51,17 @@ const FIELDS = {
    */
   currencyPrices: z.record(z.string(), z.number().positive()),
 
+  // --- overlay -------------------------------------------------------------
+  /**
+   * Shows the verdict over the game after a capture.
+   *
+   * Only visible when the game runs in Windowed Fullscreen — exclusive
+   * fullscreen owns the display and nothing draws above it.
+   */
+  overlayEnabled: z.boolean(),
+  overlayCorner: z.enum(['top-left', 'top-right', 'bottom-left', 'bottom-right']),
+  overlayDurationMs: z.number().int().min(1000).max(60_000),
+
   // --- capture -------------------------------------------------------------
   clipboardWatch: z.boolean(),
 } as const;
@@ -72,6 +83,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
   aiCustomPrompt: '',
   aiAutoNarrate: false,
   currencyPrices: {},
+  overlayEnabled: true,
+  overlayCorner: 'top-right',
+  overlayDurationMs: 8000,
   clipboardWatch: true,
 };
 

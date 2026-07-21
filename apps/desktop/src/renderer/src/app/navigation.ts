@@ -18,7 +18,7 @@ export const VIEWS = [
   { id: 'analyzer', label: 'Item Analyzer', icon: ScanSearch, stage: 1 },
   { id: 'craft', label: 'Craft Advisor', icon: Hammer, stage: 1 },
   { id: 'price', label: 'Price Check', icon: Coins, stage: 3 },
-  { id: 'build', label: 'Build Advisor', icon: Boxes, stage: 4 },
+  { id: 'build', label: 'Build Advisor', icon: Boxes, stage: 1 },
   { id: 'currency', label: 'Currency Calculator', icon: Calculator, stage: 4 },
   { id: 'settings', label: 'Settings', icon: Settings, stage: 2 },
 ] as const satisfies readonly {

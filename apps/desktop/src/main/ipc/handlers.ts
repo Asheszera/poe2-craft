@@ -1,6 +1,12 @@
 import { app, clipboard } from 'electron';
 import type { AnalysisContext, ItemAnalysis } from '@poe2/models';
-import { createProvider, presetFor, type AIDebugEvent, type NarrativeResponse } from '@poe2/ai';
+import {
+  createProvider,
+  presetFor,
+  type AIDebugEvent,
+  type AIProvider,
+  type NarrativeResponse,
+} from '@poe2/ai';
 import { defaultModPool } from '@poe2/data';
 import { canonicalTemplate } from '@poe2/shared';
 import type { PriceTable } from '@poe2/prices';
@@ -67,12 +73,10 @@ export function recordAnalysis(
  * the code the real feature uses — a test that takes a different route can pass
  * while the feature is broken, which is worse than having no test button.
  */
-async function narrateWith(
+function providerFor(
   settings: SettingsStore,
   aiDebug: ((event: AIDebugEvent) => void) | undefined,
-  raw: string,
-  craftIntent: string | null,
-): Promise<Result<NarrativeResponse>> {
+): Result<AIProvider> {
   const s = settings.settings;
   const preset = presetFor(s.aiProvider);
   const apiKey = settings.apiKey(s.aiProvider);
@@ -87,12 +91,7 @@ async function narrateWith(
     );
   }
 
-  // Re-derived here, not accepted from the renderer: the model must only ever
-  // explain an analysis this process computed.
-  const analysis = analyzeText(raw);
-  if (!analysis.ok) return analysis;
-
-  const provider = createProvider(s.aiProvider, {
+  return createProvider(s.aiProvider, {
     apiKey: apiKey ?? '',
     model: s.aiModelByProvider[s.aiProvider] ?? '',
     baseUrl: s.aiBaseUrlByProvider[s.aiProvider] ?? '',
@@ -100,7 +99,21 @@ async function narrateWith(
     extraInstructions: s.aiCustomPrompt,
     debug: aiDebug,
   });
+}
+
+async function narrateWith(
+  settings: SettingsStore,
+  aiDebug: ((event: AIDebugEvent) => void) | undefined,
+  raw: string,
+  craftIntent: string | null,
+): Promise<Result<NarrativeResponse>> {
+  const provider = providerFor(settings, aiDebug);
   if (!provider.ok) return provider;
+
+  // Re-derived here, not accepted from the renderer: the model must only ever
+  // explain an analysis this process computed.
+  const analysis = analyzeText(raw);
+  if (!analysis.ok) return analysis;
 
   return provider.value.narrate({
     item: analysis.value.item,
@@ -236,6 +249,23 @@ Item Level: 82
         sample: probe.value.narrative.summary,
       },
     };
+  },
+
+  'build:evaluate': async ({ raw }) => {
+    const provider = providerFor(settings, aiDebug);
+    if (!provider.ok) return serializeResult(provider);
+
+    const analysis = analyzeText(raw);
+    if (!analysis.ok) return serializeResult(analysis);
+
+    const evaluated = await provider.value.evaluateBuild({
+      item: analysis.value.item,
+      deterministic: analysis.value.deterministic,
+      context: contextFrom(settings, null),
+      prices: priceTableFrom(settings),
+    });
+
+    return evaluated.ok ? { ok: true, value: evaluated.value.verdict } : serializeResult(evaluated);
   },
 
   'ai:narrate': async ({ raw, craftIntent }) => {

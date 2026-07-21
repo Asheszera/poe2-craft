@@ -1,4 +1,5 @@
 import {
+  BuildVerdictSchema,
   HistoryEntrySchema,
   HistoryStatsSchema,
   ItemAnalysisSchema,
@@ -123,12 +124,6 @@ export const ipcContract = {
     response: resultSchema(NarrativeAnalysisSchema),
   },
 
-  /**
-   * Sends a fixed, minimal item through the whole AI path so the current
-   * provider settings can be verified without needing a real item — and,
-   * critically, surfaces the provider's own error text in the interface rather
-   * than only in the terminal.
-   */
   'history:list': {
     request: z.object({ limit: z.number().int().positive().max(200), offset: z.number().int().min(0) }),
     response: z.array(HistoryEntrySchema),
@@ -159,6 +154,24 @@ export const ipcContract = {
     }),
   },
 
+  /**
+   * Judges the item against the configured build.
+   *
+   * Its own channel, and its own score: this is a model's opinion about skills
+   * and scaling, which no dataset here can check. Returning it alongside the
+   * deterministic score would invite the interface to blend the two.
+   */
+  'build:evaluate': {
+    request: z.object({ raw: z.string() }),
+    response: resultSchema(BuildVerdictSchema),
+  },
+
+  /**
+   * Sends a fixed, minimal item through the whole AI path so the current
+   * provider settings can be verified without needing a real item — and,
+   * critically, surfaces the provider's own error text in the interface rather
+   * than only in the terminal.
+   */
   'ai:test': {
     request: z.null(),
     response: resultSchema(
@@ -184,6 +197,8 @@ export type IpcResponse<C extends IpcChannel> = z.infer<IpcContract[C]['response
 export const ipcEvents = {
   /** A clipboard copy was recognised as an item and analysed successfully. */
   'item:captured': ItemAnalysisSchema,
+  /** Sent only to the overlay window, which renders it and hides itself. */
+  'overlay:show': ItemAnalysisSchema,
 } as const satisfies Record<IpcEvent, z.ZodTypeAny>;
 
 export type IpcEventPayload<E extends IpcEvent> = z.infer<(typeof ipcEvents)[E]>;

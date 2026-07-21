@@ -1,7 +1,15 @@
-import { NarrativeAnalysisSchema } from '@poe2/models';
+import { BuildVerdictSchema, NarrativeAnalysisSchema } from '@poe2/models';
 import { appError, err, ok, type AppError, type Result } from '@poe2/shared';
-import { buildCraftPrompt, buildJsonSystemPrompt } from '../prompts.js';
-import type { AIProvider, NarrativeRequest, NarrativeResponse, ProviderConfig } from '../types.js';
+import type { z } from 'zod';
+import { buildBuildSystemPrompt, buildCraftPrompt, buildFitPrompt, buildJsonSystemPrompt } from '../prompts.js';
+import type {
+  AIProvider,
+  AIUsage,
+  BuildResponse,
+  NarrativeRequest,
+  NarrativeResponse,
+  ProviderConfig,
+} from '../types.js';
 
 /**
  * One adapter for every provider that speaks the OpenAI `/chat/completions`
@@ -82,6 +90,44 @@ export class OpenAICompatibleProvider implements AIProvider {
     request: NarrativeRequest,
     signal?: AbortSignal,
   ): Promise<Result<NarrativeResponse>> {
+    const result = await this.#complete(
+      buildJsonSystemPrompt(this.#config.extraInstructions),
+      buildCraftPrompt(request),
+      NarrativeAnalysisSchema,
+      signal,
+    );
+    return result.ok
+      ? ok({ narrative: result.value.data, usage: result.value.usage, elapsedMs: result.value.elapsedMs })
+      : result;
+  }
+
+  async evaluateBuild(
+    request: NarrativeRequest,
+    signal?: AbortSignal,
+  ): Promise<Result<BuildResponse>> {
+    const result = await this.#complete(
+      buildBuildSystemPrompt(this.#config.extraInstructions),
+      buildFitPrompt(request),
+      BuildVerdictSchema,
+      signal,
+    );
+    return result.ok
+      ? ok({ verdict: result.value.data, usage: result.value.usage, elapsedMs: result.value.elapsedMs })
+      : result;
+  }
+
+  /**
+   * One request, one validated object.
+   *
+   * Both operations differ only in prompt and schema, so the transport,
+   * the defensive JSON recovery and the failure mapping live here once.
+   */
+  async #complete<T extends z.ZodTypeAny>(
+    system: string,
+    user: string,
+    schema: T,
+    signal?: AbortSignal,
+  ): Promise<Result<{ data: z.infer<T>; usage: AIUsage; elapsedMs: number }>> {
     if (this.#options.requiresKey && this.#config.apiKey.trim().length === 0) {
       return err(appError('AI_NOT_CONFIGURED', `No API key is configured for ${this.id}.`));
     }
@@ -93,8 +139,8 @@ export class OpenAICompatibleProvider implements AIProvider {
       model: this.model,
       max_tokens: this.#config.maxTokens ?? DEFAULT_MAX_TOKENS,
       messages: [
-        { role: 'system', content: buildJsonSystemPrompt(this.#config.extraInstructions) },
-        { role: 'user', content: buildCraftPrompt(request) },
+        { role: 'system', content: system },
+        { role: 'user', content: user },
       ],
       // Asked for, not relied upon — and only where the provider documents it.
       // The JSON shape is always also requested in the prompt, and the response
@@ -193,22 +239,19 @@ export class OpenAICompatibleProvider implements AIProvider {
       );
     }
 
-    const narrative = NarrativeAnalysisSchema.safeParse({
-      ...(parsed as object),
-      model: `${this.id}/${this.model}`,
-    });
-    if (!narrative.success) {
+    const validated = schema.safeParse({ ...(parsed as object), model: `${this.id}/${this.model}` });
+    if (!validated.success) {
       return err(
         appError(
           'AI_PROVIDER_ERROR',
           `${this.id} returned JSON in the wrong shape. Smaller models often struggle with this — try a larger one.`,
-          { details: { issues: narrative.error.issues } },
+          { details: { issues: validated.error.issues } },
         ),
       );
     }
 
     return ok({
-      narrative: narrative.data,
+      data: validated.data,
       usage: {
         inputTokens: payload.usage?.prompt_tokens ?? 0,
         outputTokens: payload.usage?.completion_tokens ?? 0,

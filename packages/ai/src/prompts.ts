@@ -7,6 +7,8 @@ import {
 import { affixBudget, affixMods, type ItemMod, type ParsedItem } from '@poe2/models';
 import { EMPTY_TABLE, pricePrompt } from '@poe2/prices';
 import { canonicalTemplate } from '@poe2/shared';
+import buildOutputTemplate from '../prompts/build-output.md?raw';
+import buildTemplate from '../prompts/build.md?raw';
 import craftTemplate from '../prompts/craft.md?raw';
 import jsonOutputTemplate from '../prompts/json-output.md?raw';
 import systemTemplate from '../prompts/system.md?raw';
@@ -148,6 +150,40 @@ export function buildSystemPrompt(extraInstructions?: string): string {
  */
 export function buildJsonSystemPrompt(extraInstructions?: string): string {
   const base = `${systemTemplate}\n\n${jsonOutputTemplate}`;
+  if (!extraInstructions || extraInstructions.trim().length === 0) return base;
+  return `${base}\n\n## Additional instructions from the user\n\n${extraInstructions.trim()}\n`;
+}
+
+/**
+ * Prompt for judging an item against a build.
+ *
+ * Gets neither the modifier pool nor the currency catalogue: those inform *how
+ * to change* an item, and this question is only whether the item as it stands
+ * serves the character. Feeding them here would invite a crafting plan in place
+ * of a verdict.
+ */
+export function buildFitPrompt({ item, context }: NarrativeRequest): string {
+  const affixes = affixMods(item);
+  const budget = affixBudget(item.rarity);
+
+  return render(buildTemplate, {
+    itemText: item.raw.trim(),
+    rarity: item.rarity,
+    itemLevel: item.itemLevel === null ? 'unknown' : String(item.itemLevel),
+    affixSummary:
+      budget === null ? `${affixes.length}` : `${affixes.length} of ${budget}`,
+    modifierList: bullets(item.mods.map(describeMod), 'no modifiers'),
+    league: context.league,
+    characterClass: orUnknown(context.characterClass),
+    ascendancy: orUnknown(context.ascendancy),
+    mainSkill: orUnknown(context.mainSkill),
+    goal: orUnknown(context.goal),
+  });
+}
+
+/** System prompt for the build verdict, on providers without schema support. */
+export function buildBuildSystemPrompt(extraInstructions?: string): string {
+  const base = `${systemTemplate}\n\n${buildOutputTemplate}`;
   if (!extraInstructions || extraInstructions.trim().length === 0) return base;
   return `${base}\n\n## Additional instructions from the user\n\n${extraInstructions.trim()}\n`;
 }

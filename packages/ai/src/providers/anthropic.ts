@@ -1,8 +1,16 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { NarrativeAnalysisSchema } from '@poe2/models';
+import { BuildVerdictSchema, NarrativeAnalysisSchema } from '@poe2/models';
 import { appError, err, ok, type Result } from '@poe2/shared';
-import { buildCraftPrompt, buildSystemPrompt } from '../prompts.js';
-import type { AIProvider, NarrativeRequest, NarrativeResponse, ProviderConfig } from '../types.js';
+import type { z } from 'zod';
+import { buildCraftPrompt, buildFitPrompt, buildSystemPrompt } from '../prompts.js';
+import type {
+  AIProvider,
+  AIUsage,
+  BuildResponse,
+  NarrativeRequest,
+  NarrativeResponse,
+  ProviderConfig,
+} from '../types.js';
 
 const DEFAULT_MODEL = 'claude-opus-4-8';
 const DEFAULT_MAX_TOKENS = 16000;
@@ -41,6 +49,21 @@ const NARRATIVE_SCHEMA = {
     nextBestAction: { type: 'string' },
   },
   required: ['summary', 'plans', 'possibleUpgrades', 'nextBestAction'],
+  additionalProperties: false,
+} as const;
+
+/** Same rationale as `NARRATIVE_SCHEMA`: stated here, verified by zod after. */
+const BUILD_SCHEMA = {
+  type: 'object',
+  properties: {
+    score: { type: 'integer' },
+    verdict: { type: 'string', enum: ['equip', 'craft', 'sell', 'vendor', 'unclear'] },
+    reasoning: { type: 'string' },
+    whatWorks: { type: 'array', items: { type: 'string' } },
+    whatIsMissing: { type: 'array', items: { type: 'string' } },
+    assumptions: { type: 'array', items: { type: 'string' } },
+  },
+  required: ['score', 'verdict', 'reasoning', 'whatWorks', 'whatIsMissing', 'assumptions'],
   additionalProperties: false,
 } as const;
 
@@ -90,6 +113,53 @@ export class AnthropicProvider implements AIProvider {
     request: NarrativeRequest,
     signal?: AbortSignal,
   ): Promise<Result<NarrativeResponse>> {
+    const result = await this.#complete(
+      buildCraftPrompt(request),
+      NARRATIVE_SCHEMA,
+      NarrativeAnalysisSchema,
+      signal,
+    );
+    return result.ok
+      ? ok({
+          narrative: result.value.data,
+          usage: result.value.usage,
+          elapsedMs: result.value.elapsedMs,
+        })
+      : result;
+  }
+
+  async evaluateBuild(
+    request: NarrativeRequest,
+    signal?: AbortSignal,
+  ): Promise<Result<BuildResponse>> {
+    const result = await this.#complete(
+      buildFitPrompt(request),
+      BUILD_SCHEMA,
+      BuildVerdictSchema,
+      signal,
+    );
+    return result.ok
+      ? ok({
+          verdict: result.value.data,
+          usage: result.value.usage,
+          elapsedMs: result.value.elapsedMs,
+        })
+      : result;
+  }
+
+  /**
+   * One structured-output request.
+   *
+   * Both operations differ only in prompt and schema; the request shape, the
+   * refusal handling and the validation are the same and live here once.
+   */
+  async #complete<T extends z.ZodTypeAny>(
+    userPrompt: string,
+    /** The API's own schema dialect — see `NARRATIVE_SCHEMA`. */
+    jsonSchema: Record<string, unknown>,
+    schema: T,
+    signal?: AbortSignal,
+  ): Promise<Result<{ data: z.infer<T>; usage: AIUsage; elapsedMs: number }>> {
     if (this.#config.apiKey.trim().length === 0) {
       return err(appError('AI_NOT_CONFIGURED', 'No API key is configured for Claude.'));
     }
@@ -105,20 +175,24 @@ export class AnthropicProvider implements AIProvider {
           thinking: { type: 'adaptive' },
           output_config: {
             effort: this.#config.effort ?? 'low',
-            format: { type: 'json_schema', schema: NARRATIVE_SCHEMA },
+            format: { type: 'json_schema', schema: jsonSchema },
           },
-          messages: [{ role: 'user', content: buildCraftPrompt(request) }],
+          messages: [{ role: 'user', content: userPrompt }],
         },
         signal ? { signal } : undefined,
       );
 
-      return this.#toResult(message, startedAt);
+      return this.#toResult(message, startedAt, schema);
     } catch (error) {
       return err(this.#toAppError(error));
     }
   }
 
-  #toResult(message: Anthropic.Message, startedAt: number): Result<NarrativeResponse> {
+  #toResult<T extends z.ZodTypeAny>(
+    message: Anthropic.Message,
+    startedAt: number,
+    schema: T,
+  ): Result<{ data: z.infer<T>; usage: AIUsage; elapsedMs: number }> {
     // Safety classifiers decline with HTTP 200 and an empty or partial body, so
     // `stop_reason` must be checked before `content` is touched.
     if (message.stop_reason === 'refusal') {
@@ -154,17 +228,17 @@ export class AnthropicProvider implements AIProvider {
 
     // Structured outputs make this near-certain, but "near-certain" is not a
     // contract — the boundary validates like every other boundary in the app.
-    const narrative = NarrativeAnalysisSchema.safeParse({ ...(parsed as object), model: this.model });
-    if (!narrative.success) {
+    const validated = schema.safeParse({ ...(parsed as object), model: this.model });
+    if (!validated.success) {
       return err(
         appError('AI_PROVIDER_ERROR', 'The model response did not match the expected shape.', {
-          details: { issues: narrative.error.issues },
+          details: { issues: validated.error.issues },
         }),
       );
     }
 
     return ok({
-      narrative: narrative.data,
+      data: validated.data,
       usage: {
         inputTokens: message.usage.input_tokens,
         outputTokens: message.usage.output_tokens,

@@ -16,12 +16,20 @@ export type {
   AIDebugEvent,
   AIProvider,
   AIUsage,
+  BuildResponse,
   EmbeddingProvider,
   NarrativeRequest,
   NarrativeResponse,
   ProviderConfig,
 } from './types.js';
-export { buildCraftPrompt, buildJsonSystemPrompt, buildSystemPrompt, render } from './prompts.js';
+export {
+  buildBuildSystemPrompt,
+  buildCraftPrompt,
+  buildFitPrompt,
+  buildJsonSystemPrompt,
+  buildSystemPrompt,
+  render,
+} from './prompts.js';
 export { AnthropicProvider, type MessagesClient } from './providers/anthropic.js';
 export {
   extractJson,

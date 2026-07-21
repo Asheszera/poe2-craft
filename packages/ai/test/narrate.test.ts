@@ -4,7 +4,7 @@ import type { AnalysisContext } from '@poe2/models';
 import { defaultKnowledgeBase, enrichItem } from '@poe2/data';
 import { parseItem } from '@poe2/parser';
 import { analyse } from '@poe2/rules';
-import { AnthropicProvider, buildCraftPrompt, buildSystemPrompt, render } from '../src/index.js';
+import { AnthropicProvider, buildCraftPrompt, buildFitPrompt, buildSystemPrompt, render } from '../src/index.js';
 import type { MessagesClient, NarrativeRequest } from '../src/index.js';
 
 const CONTEXT: AnalysisContext = {
@@ -213,6 +213,54 @@ Item Level: 69
     expect(system.indexOf('Never invent numbers')).toBeLessThan(
       system.indexOf('Always answer in Portuguese.'),
     );
+  });
+});
+
+describe('build fit', () => {
+  const BUILD_BODY = JSON.stringify({
+    score: 25,
+    verdict: 'sell',
+    reasoning: 'Good item, wrong build.',
+    whatWorks: ['Life helps any character'],
+    whatIsMissing: ['No damage for Explosive Shot'],
+    assumptions: [],
+  });
+
+  it('judges against the build, not the item in the abstract', async () => {
+    const messages = fakeMessages({ content: textContent(BUILD_BODY) });
+    const result = await new AnthropicProvider({ apiKey: 'sk-test' }, messages).evaluateBuild(
+      requestFor(RAW),
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.verdict.verdict).toBe('sell');
+    expect(result.value.verdict.score).toBe(25);
+  });
+
+  it('sends the build prompt, not the crafting one', async () => {
+    const messages = fakeMessages({ content: textContent(BUILD_BODY) });
+    await new AnthropicProvider({ apiKey: 'sk-test' }, messages).evaluateBuild(requestFor(RAW));
+
+    const params = messages.calls[0] as { messages: { content: string }[] };
+    const prompt = params.messages[0]?.content ?? '';
+    expect(prompt).toContain('Judge whether this item serves');
+    // The crafting toolset would invite a plan where a verdict was asked for.
+    expect(prompt).not.toContain('Crafting methods available');
+  });
+
+  it('tells the model to declare what it had to assume', () => {
+    const prompt = buildFitPrompt(requestFor(RAW));
+    expect(prompt).toMatch(/say when a field was not given/i);
+    expect(prompt).toMatch(/verdict.*unclear/is);
+  });
+
+  it('reports a failure as a Result, like every other call', async () => {
+    const provider = new AnthropicProvider(
+      { apiKey: 'sk-test' },
+      { create: () => Promise.reject(new Error('offline')) },
+    );
+    await expect(provider.evaluateBuild(requestFor(RAW))).resolves.toMatchObject({ ok: false });
   });
 });
 
