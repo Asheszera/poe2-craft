@@ -27,6 +27,23 @@ export {
  * surfacing three components deep.
  */
 
+/**
+ * One modifier the base can still roll.
+ *
+ * Declared here rather than imported from `@poe2/data` so the renderer can type
+ * the response without pulling the 4 MB knowledge base into its bundle.
+ */
+export const PoolOptionSchema = z.object({
+  type: z.string(),
+  key: z.string(),
+  text: z.string(),
+  bestTier: z.number().int(),
+  tierTotal: z.number().int(),
+  requiredLevel: z.number().int(),
+  topTierLevel: z.number().int().nullable(),
+});
+export type PoolOption = z.infer<typeof PoolOptionSchema>;
+
 /** `AppError` minus `cause`, which is not structured-cloneable over IPC. */
 export const SerializableErrorSchema = z.object({
   code: z.string(),
@@ -119,6 +136,28 @@ export const ipcContract = {
   'history:stats': { request: z.null(), response: HistoryStatsSchema },
   'history:remove': { request: z.object({ id: z.number().int().positive() }), response: z.null() },
   'history:clear': { request: z.null(), response: z.null() },
+
+  /**
+   * What the item's base can still roll.
+   *
+   * A separate channel rather than a field on `ItemAnalysis`: the pool runs to
+   * dozens of entries per side and is only wanted on the Craft Advisor screen,
+   * so putting it in every analysis payload would tax the common path for the
+   * rare one.
+   */
+  'craft:pool': {
+    request: z.object({ raw: z.string() }),
+    response: z.object({
+      /** False when the base is not in the dataset — say so, never guess. */
+      known: z.boolean(),
+      baseType: z.string(),
+      itemLevel: z.number().int().nullable(),
+      prefix: z.array(PoolOptionSchema),
+      suffix: z.array(PoolOptionSchema),
+      /** Templates already on the item, so the UI can mark them as taken. */
+      present: z.array(z.string()),
+    }),
+  },
 
   'ai:test': {
     request: z.null(),

@@ -1,6 +1,8 @@
 import { app, clipboard } from 'electron';
 import type { AnalysisContext, ItemAnalysis } from '@poe2/models';
 import { createProvider, presetFor, type AIDebugEvent, type NarrativeResponse } from '@poe2/ai';
+import { defaultModPool } from '@poe2/data';
+import { canonicalTemplate } from '@poe2/shared';
 import type { PriceTable } from '@poe2/prices';
 import { appError, err, type Result } from '@poe2/shared';
 import { analyzeText } from '../analysis/pipeline.js';
@@ -142,6 +144,26 @@ export const createHandlers = ({
   history,
   aiDebug,
 }: HandlerDeps): IpcHandlers => ({
+  'craft:pool': ({ raw }) => {
+    const analysis = analyzeText(raw);
+    if (!analysis.ok) {
+      return { known: false, baseType: '', itemLevel: null, prefix: [], suffix: [], present: [] };
+    }
+
+    const { item } = analysis.value;
+    const pool = defaultModPool();
+    const options = pool.options(item.baseType, item.itemLevel);
+
+    return {
+      known: pool.knows(item.baseType),
+      baseType: item.baseType,
+      itemLevel: item.itemLevel,
+      prefix: options.prefix,
+      suffix: options.suffix,
+      present: item.mods.map((mod) => canonicalTemplate(mod.template)),
+    };
+  },
+
   'history:list': ({ limit, offset }) => history.list(limit, offset),
   'history:stats': () => history.stats(),
   'history:remove': ({ id }) => {

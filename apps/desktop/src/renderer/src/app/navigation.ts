@@ -16,7 +16,7 @@ import {
 export const VIEWS = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, stage: 1 },
   { id: 'analyzer', label: 'Item Analyzer', icon: ScanSearch, stage: 1 },
-  { id: 'craft', label: 'Craft Advisor', icon: Hammer, stage: 3 },
+  { id: 'craft', label: 'Craft Advisor', icon: Hammer, stage: 1 },
   { id: 'price', label: 'Price Check', icon: Coins, stage: 3 },
   { id: 'build', label: 'Build Advisor', icon: Boxes, stage: 4 },
   { id: 'currency', label: 'Currency Calculator', icon: Calculator, stage: 4 },

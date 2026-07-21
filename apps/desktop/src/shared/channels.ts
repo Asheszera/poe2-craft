@@ -25,6 +25,7 @@ export const IPC_CHANNELS = [
   'history:stats',
   'history:remove',
   'history:clear',
+  'craft:pool',
 ] as const;
 
 /** Main → renderer, fire-and-forget. */
