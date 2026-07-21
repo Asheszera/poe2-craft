@@ -64,6 +64,15 @@ const FIELDS = {
 
   // --- capture -------------------------------------------------------------
   clipboardWatch: z.boolean(),
+  /**
+   * Global shortcut that sends a copy keystroke to the game.
+   *
+   * The app presses the same Ctrl+C the player would, and only when asked. It
+   * never reads game memory and never automates play.
+   */
+  hotkeyEnabled: z.boolean(),
+  /** Electron accelerator string, e.g. `F8` or `CommandOrControl+D`. */
+  hotkey: z.string(),
 } as const;
 
 /** Complete settings. Callers always supply every field (merged over defaults). */
@@ -87,6 +96,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   overlayCorner: 'top-right',
   overlayDurationMs: 8000,
   clipboardWatch: true,
+  hotkeyEnabled: false,
+  hotkey: 'F8',
 };
 
 /**
@@ -95,6 +106,15 @@ export const DEFAULT_SETTINGS: AppSettings = {
  */
 export const SettingsViewSchema = AppSettingsSchema.extend({
   configuredProviders: z.array(z.string()),
+  /**
+   * Whether the global shortcut is actually registered, and why not if it is
+   * not. Reported rather than assumed: another application may already own the
+   * key, and a hotkey that silently does nothing is worse than none.
+   */
+  hotkeyStatus: z.object({
+    active: z.boolean(),
+    error: z.string().nullable(),
+  }),
 });
 export type SettingsView = z.infer<typeof SettingsViewSchema>;
 

@@ -95,8 +95,20 @@ export class SettingsStore {
     return this.#encryptedApiKeys[provider] !== undefined;
   }
 
+  /**
+   * Live status of things the store does not own but the interface must show.
+   *
+   * Injected rather than imported: the store knows what the hotkey *should* be,
+   * and only the registry knows whether the operating system agreed.
+   */
+  hotkeyStatus: { active: boolean; error: string | null } = { active: false, error: null };
+
   view(): SettingsView {
-    return { ...this.#settings, configuredProviders: Object.keys(this.#encryptedApiKeys) };
+    return {
+      ...this.#settings,
+      configuredProviders: Object.keys(this.#encryptedApiKeys),
+      hotkeyStatus: this.hotkeyStatus,
+    };
   }
 
   /**

@@ -50,6 +50,17 @@ Every non-obvious choice is recorded in [`docs/adr`](docs/adr):
 - [ADR-002](docs/adr/002-affix-tiers-are-inferred.md) — affix tiers are
   inferred, and the model says so
 - [ADR-003](docs/adr/003-ipc-contract.md) — one validated contract for all IPC
+- [ADR-004](docs/adr/004-passive-clipboard-capture.md) — clipboard capture is
+  passive and polled
+- [ADR-005](docs/adr/005-knowledge-base-sources.md) — every fact comes from a
+  citable source
+- [ADR-006](docs/adr/006-rules-in-typescript.md) — craft rules are code, not data
+- [ADR-007](docs/adr/007-ai-narrates-never-decides.md) — the AI narrates, it
+  never decides
+- [ADR-008](docs/adr/008-credential-storage.md) — credentials live in the OS
+  keychain
+- [ADR-009](docs/adr/009-hotkey-sends-a-keystroke.md) — the hotkey sends a
+  keystroke, and PowerShell sends it
 
 ## Roadmap status
 
@@ -57,5 +68,5 @@ Every non-obvious choice is recorded in [`docs/adr`](docs/adr):
 | --- | --- | --- |
 | 1 | Workspace, models, parser | done |
 | 2 | Electron shell, typed IPC, Item Analyzer, Dashboard | done |
-| 3 | Knowledge base, tier inference, rules engine, AI providers, SQLite history | next |
-| 4 | Global hotkey, overlay, price adapters, Build Advisor | planned |
+| 3 | Knowledge base, tier inference, rules engine, AI providers, SQLite history | done |
+| 4 | Global hotkey, overlay, price adapters, Build Advisor | done |

@@ -32,7 +32,14 @@ const inputClass =
   'rounded-md border border-line bg-surface-2 px-3 py-2 text-[13px] text-ink outline-none placeholder:text-ink-dim focus:border-accent/50';
 
 /** Settings fields edited as free text. */
-type TextKey = 'league' | 'characterClass' | 'ascendancy' | 'mainSkill' | 'goal' | 'aiCustomPrompt';
+type TextKey =
+  | 'league'
+  | 'characterClass'
+  | 'ascendancy'
+  | 'mainSkill'
+  | 'goal'
+  | 'aiCustomPrompt'
+  | 'hotkey';
 
 /** Of those, the ones whose empty value is `null` rather than `''`. */
 const NULLABLE_KEYS = new Set<TextKey>(['characterClass', 'ascendancy', 'mainSkill', 'goal']);
@@ -307,6 +314,51 @@ export function SettingsView(): React.JSX.Element {
             />
           </Field>
         </div>
+      </section>
+
+      <section className="flex flex-col gap-4 rounded-lg border border-line bg-surface p-5">
+        <div>
+          <h2 className="text-[12px] font-medium">Capture hotkey</h2>
+          <p className="mt-1 text-[11px] text-ink-dim">
+            Sends the same Ctrl+C you would press, to whichever window has focus. The app never
+            reads game memory and never automates play — it presses one key, and only when you ask.
+            Leave it off if you are happy pressing Ctrl+C yourself; the result is identical.
+          </p>
+        </div>
+
+        <label className="flex items-center gap-2 text-[12px] text-ink">
+          <input
+            type="checkbox"
+            checked={data.hotkeyEnabled}
+            onChange={(e) => patch({ hotkeyEnabled: e.target.checked })}
+            className="size-3.5 accent-accent"
+          />
+          Enable the hotkey
+        </label>
+
+        {data.hotkeyEnabled && (
+          <>
+            <Field
+              label="Shortcut"
+              hint="Electron accelerator, e.g. F8, F9 or CommandOrControl+D."
+            >
+              <input {...text('hotkey')} placeholder="F8" className={inputClass} spellCheck={false} />
+            </Field>
+
+            {/* What the OS actually did, not what we asked for: a hotkey that
+                silently does nothing is the worst possible outcome. */}
+            {data.hotkeyStatus.active ? (
+              <div className="flex items-center gap-2 text-[12px] text-accent">
+                <Check size={13} />
+                Registered — press {data.hotkey} with the game focused.
+              </div>
+            ) : (
+              <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-[12px] text-amber-200/90">
+                {data.hotkeyStatus.error ?? 'Not registered yet.'}
+              </div>
+            )}
+          </>
+        )}
       </section>
 
       <section className="flex flex-col gap-4 rounded-lg border border-line bg-surface p-5">

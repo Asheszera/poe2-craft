@@ -11,6 +11,8 @@ import { SqliteHistoryRepository } from './history/sqlite.js';
 import { ClipboardWatcher } from './clipboard/watcher.js';
 import { SettingsStore } from './settings/store.js';
 import { OverlayWindow } from './overlay/window.js';
+import { HotkeyRegistry } from './hotkey/registry.js';
+import { defaultKeySender } from './hotkey/keySender.js';
 import type { ItemAnalysis } from '@poe2/models';
 import type { IpcEventPayload } from '../shared/ipc.js';
 
@@ -78,6 +80,7 @@ function createMainWindow(): BrowserWindow {
 /** Set once the app is ready; the clipboard watcher starts before that. */
 let captureHistory: SqliteHistoryRepository | null = null;
 let overlay: OverlayWindow | null = null;
+let hotkeys: HotkeyRegistry | null = null;
 let overlaySettings: SettingsStore | null = null;
 
 /**
@@ -150,6 +153,7 @@ const watcher = new ClipboardWatcher({
 app.on('will-quit', () => {
   watcher.stop();
   overlay?.destroy();
+  hotkeys?.dispose();
 });
 
 // A second instance would fight over the global hotkey (stage 4), so it is
@@ -175,8 +179,14 @@ if (!app.requestSingleInstanceLock()) {
 
     const history = new SqliteHistoryRepository(join(app.getPath('userData'), 'history.db'));
 
+    hotkeys = new HotkeyRegistry(defaultKeySender(), (message) =>
+      console.error('[hotkey]', message),
+    );
+    const hotkeyStatus = hotkeys.apply(settings.settings.hotkeyEnabled, settings.settings.hotkey);
+    settings.hotkeyStatus = { active: hotkeyStatus.enabled, error: hotkeyStatus.error };
+
     registerIpcHandlers(
-      createHandlers({ watcher, settings, history, aiDebug: createAiDebugLogger(isDev) }),
+      createHandlers({ watcher, settings, history, hotkeys, aiDebug: createAiDebugLogger(isDev) }),
     );
     captureHistory = history;
     overlaySettings = settings;

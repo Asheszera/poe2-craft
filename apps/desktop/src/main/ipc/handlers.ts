@@ -14,6 +14,7 @@ import { appError, err, type Result } from '@poe2/shared';
 import { analyzeText } from '../analysis/pipeline.js';
 import type { ClipboardWatcher } from '../clipboard/watcher.js';
 import type { HistoryRepository } from '../history/repository.js';
+import type { HotkeyRegistry } from '../hotkey/registry.js';
 import type { SettingsStore } from '../settings/store.js';
 import type { IpcHandlers } from './registry.js';
 import { serializeResult } from './registry.js';
@@ -22,6 +23,8 @@ export interface HandlerDeps {
   readonly watcher: ClipboardWatcher;
   readonly settings: SettingsStore;
   readonly history: HistoryRepository;
+  /** Absent in tests, which do not register operating-system shortcuts. */
+  readonly hotkeys?: HotkeyRegistry | undefined;
   /** Traces provider traffic to the terminal. Development only. */
   readonly aiDebug?: ((event: AIDebugEvent) => void) | undefined;
 }
@@ -155,6 +158,7 @@ export const createHandlers = ({
   watcher,
   settings,
   history,
+  hotkeys,
   aiDebug,
 }: HandlerDeps): IpcHandlers => ({
   'craft:pool': ({ raw }) => {
@@ -214,6 +218,12 @@ export const createHandlers = ({
       const view = settings.update(patch);
       // Keep the watcher in step with the setting that controls it.
       if (patch.clipboardWatch !== undefined) watcher.setEnabled(patch.clipboardWatch);
+      // Re-register on any hotkey change, and report what the OS actually did.
+      if (patch.hotkeyEnabled !== undefined || patch.hotkey !== undefined) {
+        const status = hotkeys?.apply(view.hotkeyEnabled, view.hotkey);
+        if (status) settings.hotkeyStatus = { active: status.enabled, error: status.error };
+        return { ok: true, value: settings.view() };
+      }
       return { ok: true, value: view };
     } catch (error) {
       return serializeResult(
