@@ -74,3 +74,45 @@ entire export is 0 or 1 — eligibility, not rarity. So this dataset supports
 or probability model can be built on it, and one built anyway would be inventing
 the precision that makes it look trustworthy. If weighted data ever appears, it
 belongs here; until then the advisor counts options and does not price gambles.
+
+## Addendum (2026-07-21) — the search for real modifier weights, and what to do without them
+
+Players observe that some modifiers land far more often than others, so the
+binary weights above were treated as a gap to close rather than a fact to
+accept. Four sources were checked:
+
+| Source | Result |
+| --- | --- |
+| `repoe-fork.github.io/poe2/mods.min.json` | `spawn_weights` present, every value 0 or 1; `generation_weights` empty on all 16.7k rows |
+| `poe2db.tw` | mod tables carry no weight column at all |
+| `poe2wiki.net` cargo `mod_spawn_weights` | table structure is `ordinal` + `tag` — no weight field |
+| `poe-tool-dev/dat-schema` (PoE2) | `SpawnWeight_Values` is declared `i32[]`, so the game *has* the column |
+
+The schema says the column exists; three independent readers of it publish
+nothing but eligibility. Either PoE2's table genuinely carries 0/1, or every
+public exporter drops the values — and this project cannot tell which. So: **no
+source of GGG's modifier weights is available, and none is assumed.**
+
+### What is reported instead
+
+Something weaker, sourced, and explicitly labelled. Under the only model the
+data supports, each *eligible tier entry* is one equally likely outcome, so a
+ladder's share of the pool is its reachable tier count over the side's total.
+
+That distribution is **not flat**. On Pauascale Gloves at item level 80:
+
+```
+  +# to Dexterity                        8 tiers eligible   8.9% of the pool
+  #% increased Attack Speed              4 tiers            4.4%
+  #% increased Energy Shield Recharge    1 tier             1.1%
+```
+
+Dexterity is eight times as likely as the recharge modifier, and that is read
+from the data rather than assumed. Blocked modifiers are excluded from the
+denominator, so the shares describe what can actually roll next.
+
+Its limits travel with it. `PoolOption.chance` is documented as relative
+likelihood; the list footer and the craft prompt both state that GGG does not
+publish weights and that these shares understate genuinely rare modifiers; and
+the prompt forbids converting them into an expected number of orbs. A number
+this easy to trust has to carry its own caveat.

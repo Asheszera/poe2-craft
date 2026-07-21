@@ -32,6 +32,13 @@ export interface PoolOption {
    * filtered away, because "you cannot have both" is itself the advice.
    */
   readonly blockedBy: string | null;
+  /** How many of this ladder's tiers the item level allows. */
+  readonly eligibleTiers: number;
+  /**
+   * Share of this affix side's rollable pool, 0–1. See `#collapse` for what
+   * this is and, more importantly, what it is not.
+   */
+  readonly chance: number;
 }
 
 export interface PoolOptions {
@@ -106,7 +113,24 @@ export class ModPoolIndex {
     };
   }
 
-  /** One option per ladder: the best tier reachable, plus where the top sits. */
+  /**
+   * One option per ladder: the best tier reachable, where the top sits, and how
+   * large a share of the pool it occupies.
+   *
+   * **What `chance` is.** The datamined table gives every modifier a spawn
+   * weight of exactly 0 or 1 — eligibility, not rarity (see ADR-005). Under the
+   * only model that data supports, each *eligible tier entry* is one equally
+   * likely outcome, so a ladder's share is its reachable tier count over the
+   * side's total. That is not a flat distribution: on Pauascale Gloves at item
+   * level 80, `+# to Dexterity` has 8 reachable tiers against 1 for
+   * `increased Energy Shield Recharge Rate`, so it is eight times as likely.
+   *
+   * **What it is not.** It is not GGG's weighting. If the game weights modifiers
+   * beyond eligibility — and players report that it does — no published source
+   * carries those numbers, so this understates rare modifiers and overstates
+   * common ones. It is stated as a share of the pool, never as a guarantee, and
+   * everything that renders it says where it comes from.
+   */
   #collapse(
     pool: Record<string, number>,
     itemLevel: number | null,
@@ -132,6 +156,8 @@ export class ModPoolIndex {
         continue;
       }
 
+      const eligibleTiers = (current?.eligibleTiers ?? 0) + 1;
+
       if (!current || entry.tier < current.bestTier) {
         byLadder.set(ladder, {
           type: entry.type,
@@ -143,16 +169,29 @@ export class ModPoolIndex {
           topTierLevel,
           tags: entry.tags,
           blockedBy: entry.groups.find((group) => occupied.has(group)) ?? null,
+          eligibleTiers,
+          chance: 0, // filled below, once the pool total is known
         });
       } else {
-        byLadder.set(ladder, { ...current, topTierLevel });
+        byLadder.set(ladder, { ...current, topTierLevel, eligibleTiers });
       }
     }
 
+    const options = [...byLadder.values()].filter((option) => option.bestTier > 0);
+
+    // Blocked modifiers are out of the running, so they are out of the
+    // denominator too: the shares must describe what can actually roll next,
+    // not what could have rolled on an empty item.
+    const rollable = options.filter((option) => option.blockedBy === null);
+    const total = rollable.reduce((sum, option) => sum + option.eligibleTiers, 0);
+
     // Blocked options sink to the bottom: still visible, never mistaken for
     // something the item can actually roll next.
-    return [...byLadder.values()]
-      .filter((option) => option.bestTier > 0)
+    return options
+      .map((option) => ({
+        ...option,
+        chance: total === 0 || option.blockedBy !== null ? 0 : option.eligibleTiers / total,
+      }))
       .sort(
         (a, b) =>
           Number(a.blockedBy !== null) - Number(b.blockedBy !== null) ||

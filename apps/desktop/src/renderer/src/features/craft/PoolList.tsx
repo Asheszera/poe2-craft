@@ -117,6 +117,13 @@ export function PoolList({
                 <span className={option.bestTier === 1 ? 'text-accent' : undefined}>
                   best T{option.bestTier}/{option.tierTotal}
                 </span>
+                {!unavailable && option.chance > 0 && (
+                  <span
+                    title={`${option.eligibleTiers} of this modifier's tiers can roll at this item level, out of ${Math.round(option.eligibleTiers / option.chance)} in the pool`}
+                  >
+                    {(option.chance * 100).toFixed(1)}% of pool
+                  </span>
+                )}
                 {excluded && (
                   <span className="text-ink-muted">
                     blocked — this item already has a {option.blockedBy} modifier
@@ -136,6 +143,15 @@ export function PoolList({
           );
         })}
       </ul>
+
+      {/*
+        The percentage is the kind of number that gets trusted more than it
+        deserves, so what it is sits next to it rather than in a manual.
+      */}
+      <footer className="border-t border-line px-3 py-2 text-[10px] leading-relaxed text-ink-dim">
+        Share of the pool is how many of a modifier's tiers this item level allows, over the pool
+        total — relative likelihood, not the game's own odds. GGG does not publish modifier weights.
+      </footer>
     </section>
   );
 }

@@ -118,3 +118,48 @@ describe('modifiers the item can no longer roll', () => {
     expect(pool.occupiedGroups(['not a modifier at all']).size).toBe(0);
   });
 });
+
+/**
+ * Modifiers are not equally likely, and the difference is in the data: a ladder
+ * with eight reachable tiers occupies eight times the pool of one with a single
+ * tier. This is not GGG's weighting — see ADR-005 — but it is not flat either,
+ * and reporting it flat would be its own kind of wrong.
+ */
+describe('how likely each modifier is', () => {
+  const suffixes = pool.options('Pauascale Gloves', 80).suffix;
+  const chanceOf = (needle: string): number =>
+    suffixes.find((o) => o.key.includes(needle))?.chance ?? 0;
+
+  it('gives the shares of one affix side a total of 1', () => {
+    const total = suffixes.reduce((sum, o) => sum + o.chance, 0);
+    expect(total).toBeCloseTo(1, 6);
+  });
+
+  it('counts the tiers the item level actually allows', () => {
+    const dexterity = suffixes.find((o) => o.key === '# to dexterity');
+    expect(dexterity?.eligibleTiers).toBe(8);
+  });
+
+  it('ranks a deep ladder above a shallow one', () => {
+    // 8 reachable tiers against 1 — eight times the space in the pool.
+    expect(chanceOf('# to dexterity')).toBeCloseTo(8 * chanceOf('energy shield recharge rate'), 6);
+  });
+
+  it('shrinks the pool as the item level falls', () => {
+    const low = pool.options('Pauascale Gloves', 20).suffix;
+    const deep = low.find((o) => o.key === '# to dexterity');
+
+    expect(deep?.eligibleTiers).toBeLessThan(8);
+  });
+
+  it('gives blocked modifiers no share, and leaves them out of the total', () => {
+    const prefixes = pool.options('Rawhide Belt', 80, [
+      '#% increased flask life recovery rate',
+    ]).prefix;
+
+    expect(prefixes.filter((o) => o.blockedBy !== null).every((o) => o.chance === 0)).toBe(true);
+    // The remaining shares still add up: what cannot roll is out of the
+    // denominator, so the numbers describe what can actually happen next.
+    expect(prefixes.reduce((sum, o) => sum + o.chance, 0)).toBeCloseTo(1, 6);
+  });
+});

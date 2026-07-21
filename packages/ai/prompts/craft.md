@@ -59,7 +59,8 @@ goal is about the character, not about the item in isolation:
 {{modifierPool}}
 
 Read from the game's own data for this exact base and item level. Modifiers
-already on the item are excluded — this is what is still missing.
+already on the item are excluded, as are modifiers whose exclusion group is
+already occupied — this is what is still missing *and* still possible.
 
 - **Never propose a modifier that is not in this list.** If it is absent, this
   base cannot roll it, and a plan that chases it is wasted currency.
@@ -68,6 +69,25 @@ already on the item are excluded — this is what is still missing.
   say so, and if a higher-level base is the real answer, say that instead.
 - Use the list to judge whether an open slot is worth filling at all. A slot
   whose options are all irrelevant to the intent is not an opportunity.
+- The bracketed words are the modifier's tags — `attack`, `caster`, `life`,
+  `elemental`. Use them to connect the player's stated goal to modifiers that
+  serve it: "more damage" is not the name of any modifier, and an attribute can
+  scale a build's damage without saying so in its own text.
+
+### About the percentages
+
+Each line carries its share of the pool. Treat it as **relative likelihood, not
+a probability the game guarantees**:
+
+- It is derived from how many of that modifier's tiers this item level allows,
+  divided by the pool total. A ladder with 8 reachable tiers occupies eight
+  times the space of one with a single tier, and is that much likelier to land.
+- The game's own table publishes eligibility, not rarity, and no public source
+  carries GGG's real weights. So these shares understate genuinely rare
+  modifiers.
+- Use them to rank and to compare — "roughly one in nine" — never to promise an
+  outcome or to compute an expected cost in currency. If asked how many orbs a
+  craft will take, say that the data does not support that answer.
 
 ## Crafting methods available in the live game
 

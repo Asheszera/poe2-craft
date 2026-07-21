@@ -49,6 +49,14 @@ export const PoolOptionSchema = z.object({
    * option shares it — meaning the item can no longer roll it.
    */
   blockedBy: z.string().nullable(),
+  /** Tiers of this ladder the item level allows. */
+  eligibleTiers: z.number().int(),
+  /**
+   * Share of the rollable pool, 0–1 — derived from tier density, because the
+   * datamined table publishes eligibility rather than GGG's real weights.
+   * Anything rendering it must say so.
+   */
+  chance: z.number(),
 });
 export type PoolOption = z.infer<typeof PoolOptionSchema>;
 

@@ -123,7 +123,8 @@ function describePool(item: ParsedItem): string {
           : `best here is T${option.bestTier}/${option.tierTotal}` +
             (option.topTierLevel === null ? '' : `, T1 needs ilvl ${option.topTierLevel}`);
       const tags = option.tags.length > 0 ? ` [${option.tags.join(' ')}]` : '';
-      return `    - ${option.text} — ${ceiling}${tags}`;
+      const share = `~${(option.chance * 100).toFixed(1)}% of the pool`;
+      return `    - ${option.text} — ${ceiling}, ${share}${tags}`;
     });
 
     const more =
