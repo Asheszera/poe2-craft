@@ -1,7 +1,9 @@
 import rawCurrencies from '../data/currencies.json' with { type: 'json' };
+import rawModPool from '../data/mod-pool.json' with { type: 'json' };
 import rawMods from '../data/mods.json' with { type: 'json' };
 import rawStats from '../data/stats.json' with { type: 'json' };
-import type { CurrencyDataset } from './schemas.js';
+import { ModPoolIndex } from './modPool.js';
+import type { CurrencyDataset, ModPoolDataset } from './schemas.js';
 import type { EnrichmentContext } from './enrich.js';
 import { ModIndex } from './modIndex.js';
 import type { ModDataset, StatDataset } from './schemas.js';
@@ -19,6 +21,7 @@ export * from './statIndex.js';
 export * from './modIndex.js';
 export * from './enrich.js';
 export * from './crafting.js';
+export * from './modPool.js';
 
 /**
  * Datasets are asserted rather than parsed at startup.
@@ -32,6 +35,15 @@ export const modsDataset = rawMods as ModDataset;
 // Already structurally a CurrencyDataset — the annotation documents intent and
 // keeps the export stable if the JSON's inferred shape ever narrows.
 export const currenciesDataset: CurrencyDataset = rawCurrencies;
+export const modPoolDataset = rawModPool as ModPoolDataset;
+
+let poolIndex: ModPoolIndex | null = null;
+
+/** Lazily built: 426 pools and ~2.5k modifier lookups, paid on first use. */
+export function defaultModPool(): ModPoolIndex {
+  poolIndex ??= new ModPoolIndex(modPoolDataset, modsDataset);
+  return poolIndex;
+}
 
 let cached: EnrichmentContext | null = null;
 

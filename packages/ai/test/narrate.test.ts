@@ -108,6 +108,56 @@ Totally Not A Real Modifier
     expect(prompt).toContain('unknown'); // `goal` is null
   });
 
+  it('tells the model what the base can still roll, with the level ceiling', () => {
+    const prompt = buildCraftPrompt(
+      requestFor(`Item Class: Gloves
+Rarity: Rare
+Corpse Claw
+Pauascale Gloves
+--------
+Item Level: 69
+--------
++80 to maximum Mana
+`),
+    );
+
+    expect(prompt).toContain('What this base can still roll');
+    expect(prompt).toMatch(/prefixes \(\d+ available\)/);
+    expect(prompt).toMatch(/best here is T\d+\/\d+/);
+  });
+
+  it('names the real currency catalogue rather than relying on recall', () => {
+    const prompt = buildCraftPrompt(requestFor(RAW));
+
+    // Items that postdate a model's training cutoff — it cannot suggest what it
+    // has never heard of.
+    expect(prompt).toContain('Perfect Regal Orb');
+    expect(prompt).toContain('Essences');
+  });
+
+  it('admits when the base is not in the dataset instead of inventing a pool', () => {
+    const prompt = buildCraftPrompt(
+      requestFor(`Item Class: Gloves
+Rarity: Rare
+Mystery Grips
+Totally Invented Base
+--------
+Item Level: 69
+--------
++80 to maximum Mana
+`),
+    );
+
+    expect(prompt).toContain('unknown base');
+  });
+
+  it('stays within a sane prompt size', () => {
+    const prompt = buildCraftPrompt(requestFor(RAW));
+    // Roughly 4 characters per token: the possibility space and the currency
+    // catalogue are worth their cost, but they must not crowd out the item.
+    expect(prompt.length).toBeLessThan(24_000);
+  });
+
   it("carries the player's intent for this item into the prompt", () => {
     const prompt = buildCraftPrompt(requestFor(RAW));
     expect(prompt).toContain('as little currency as possible');

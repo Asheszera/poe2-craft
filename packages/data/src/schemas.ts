@@ -107,3 +107,23 @@ export const CurrencyDatasetSchema = DatasetMetaSchema.extend({
   entries: z.array(CurrencyEntrySchema),
 });
 export type CurrencyDataset = z.infer<typeof CurrencyDatasetSchema>;
+
+/**
+ * One pool of modifiers, shared by every base that rolls the same things.
+ *
+ * `{ modId: requiredItemLevel }` — the level gate is what turns "this can roll"
+ * into "this can roll *here*", and it is the difference between advising a T1
+ * that the item can never reach and advising the best tier actually available.
+ */
+export const ModPoolGroupSchema = z.object({
+  prefix: z.record(z.string(), z.number()),
+  suffix: z.record(z.string(), z.number()),
+});
+export type ModPoolGroup = z.infer<typeof ModPoolGroupSchema>;
+
+export const ModPoolDatasetSchema = DatasetMetaSchema.extend({
+  /** Pools, referenced by index — thousands of bases share a few hundred. */
+  groups: z.array(ModPoolGroupSchema),
+  bases: z.record(z.string(), z.object({ itemClass: z.string(), group: z.number().int() })),
+});
+export type ModPoolDataset = z.infer<typeof ModPoolDatasetSchema>;

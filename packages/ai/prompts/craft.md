@@ -54,6 +54,21 @@ goal is about the character, not about the item in isolation:
 - If the item cannot serve the stated intent — wrong base, wrong modifier pool,
   corrupted — say that plainly first instead of planning around it.
 
+## What this base can still roll
+
+{{modifierPool}}
+
+Read from the game's own data for this exact base and item level. Modifiers
+already on the item are excluded — this is what is still missing.
+
+- **Never propose a modifier that is not in this list.** If it is absent, this
+  base cannot roll it, and a plan that chases it is wasted currency.
+- **Never propose chasing a tier above the ceiling shown.** Where a line says
+  the best reachable tier is 3, tiers 1 and 2 are gated above this item's level:
+  say so, and if a higher-level base is the real answer, say that instead.
+- Use the list to judge whether an open slot is worth filling at all. A slot
+  whose options are all irrelevant to the intent is not an opportunity.
+
 ## Crafting methods available in the live game
 
 {{craftingMethods}}

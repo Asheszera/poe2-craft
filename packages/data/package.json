@@ -10,7 +10,8 @@
     "scrape:stats": "tsx scripts/scrape-stats.ts",
     "scrape:mods": "tsx scripts/scrape-mods.ts",
     "scrape:currencies": "tsx scripts/scrape-currencies.ts",
-    "scrape": "pnpm scrape:stats && pnpm scrape:mods && pnpm scrape:currencies"
+    "scrape:pool": "tsx scripts/scrape-mod-pool.ts",
+    "scrape": "pnpm scrape:stats && pnpm scrape:mods && pnpm scrape:currencies && pnpm scrape:pool"
   },
   "dependencies": {
     "@poe2/models": "workspace:*",
