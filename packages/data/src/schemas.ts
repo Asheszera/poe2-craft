@@ -131,6 +131,27 @@ export const ModPoolGroupSchema = z.object({
 });
 export type ModPoolGroup = z.infer<typeof ModPoolGroupSchema>;
 
+/**
+ * How likely each modifier is to roll, per item context.
+ *
+ * Weights are per tag in the game data; poe2db resolves them per item-class
+ * page, so a "context" is one such page — `Amulets`, or `Gloves_str_dex`, since
+ * a strength glove and a dexterity glove roll different pools. Keys are
+ * `template|level|prefix\|suffix|group`, which is what identifies one tier of
+ * one ladder across both datasets.
+ *
+ * A modifier absent from a context has no published weight there; that is not
+ * the same as weight zero, and `ModPoolIndex` reports it as unknown rather than
+ * treating it as impossible.
+ */
+export const ModWeightDatasetSchema = DatasetMetaSchema.extend({
+  source: z.string(), // not a bare URL: names the page family and the payload
+  contexts: z.record(z.string(), z.record(z.string(), z.number().positive())),
+  /** Base display name → the context whose weights apply to it. */
+  bases: z.record(z.string(), z.string()),
+});
+export type ModWeightDataset = z.infer<typeof ModWeightDatasetSchema>;
+
 export const ModPoolDatasetSchema = DatasetMetaSchema.extend({
   /** Pools, referenced by index — thousands of bases share a few hundred. */
   groups: z.array(ModPoolGroupSchema),

@@ -164,7 +164,15 @@ export const createHandlers = ({
   'craft:pool': ({ raw }) => {
     const analysis = analyzeText(raw);
     if (!analysis.ok) {
-      return { known: false, baseType: '', itemLevel: null, prefix: [], suffix: [], present: [] };
+      return {
+        known: false,
+        baseType: '',
+        itemLevel: null,
+        prefix: [],
+        suffix: [],
+        chanceBasis: 'tiers',
+        present: [],
+      };
     }
 
     const { item } = analysis.value;
@@ -181,6 +189,7 @@ export const createHandlers = ({
       itemLevel: item.itemLevel,
       prefix: options.prefix,
       suffix: options.suffix,
+      chanceBasis: options.chanceBasis,
       present,
     };
   },

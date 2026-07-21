@@ -1,7 +1,40 @@
 import { describe, expect, it } from 'vitest';
-import { defaultModPool, ModPoolDatasetSchema, modPoolDataset } from '../src/index.js';
+import {
+  defaultModPool,
+  ModPoolDatasetSchema,
+  modPoolDataset,
+  ModWeightDatasetSchema,
+  modWeightsDataset,
+} from '../src/index.js';
 
 const pool = defaultModPool();
+
+/**
+ * The weights come from a scraped page, so the dataset is checked here rather
+ * than trusted. A silently empty or flattened scrape would otherwise surface as
+ * plausible-looking percentages, which is the failure this whole feature exists
+ * to avoid.
+ */
+describe('modifier weight dataset', () => {
+  it('conforms to its schema', () => {
+    expect(ModWeightDatasetSchema.safeParse(modWeightsDataset).success).toBe(true);
+  });
+
+  it('covers the common bases', () => {
+    expect(Object.keys(modWeightsDataset.bases).length).toBeGreaterThan(1000);
+    expect(Object.keys(modWeightsDataset.contexts).length).toBeGreaterThan(20);
+  });
+
+  it('carries graded weights, not eligibility flags', () => {
+    // The bug this replaced: an extraction that saw only 0s and 1s and
+    // concluded PoE2 had no weights. If that ever happens again, this fails.
+    const all = Object.values(modWeightsDataset.contexts).flatMap((c) => Object.values(c));
+    const graded = all.filter((w) => w > 1);
+
+    expect(graded.length).toBeGreaterThan(all.length / 2);
+    expect(Math.max(...all)).toBeGreaterThanOrEqual(1000);
+  });
+});
 
 describe('mod pool dataset', () => {
   it('conforms to its schema', () => {
@@ -20,7 +53,11 @@ describe('what a base can still roll', () => {
 
   it('reports nothing for an unknown base rather than guessing', () => {
     expect(pool.knows('Definitely Not A Real Base')).toBe(false);
-    expect(pool.options('Definitely Not A Real Base', 80)).toEqual({ prefix: [], suffix: [] });
+    expect(pool.options('Definitely Not A Real Base', 80)).toEqual({
+      prefix: [],
+      suffix: [],
+      chanceBasis: 'tiers',
+    });
   });
 
   it('offers both prefixes and suffixes for a normal gear base', () => {
@@ -120,36 +157,47 @@ describe('modifiers the item can no longer roll', () => {
 });
 
 /**
- * Modifiers are not equally likely, and the difference is in the data: a ladder
- * with eight reachable tiers occupies eight times the pool of one with a single
- * tier. This is not GGG's weighting — see ADR-005 — but it is not flat either,
- * and reporting it flat would be its own kind of wrong.
+ * Modifiers are not equally likely, and the real weights say by how much.
+ * Chaos resistance carries 250 per tier against fire resistance's 1000 — a
+ * fourfold difference no amount of counting tiers would have found.
  */
 describe('how likely each modifier is', () => {
-  const suffixes = pool.options('Pauascale Gloves', 80).suffix;
-  const chanceOf = (needle: string): number =>
-    suffixes.find((o) => o.key.includes(needle))?.chance ?? 0;
+  const options = pool.options('Pauascale Gloves', 80);
+  const suffixes = options.suffix;
+  const find = (key: string) => suffixes.find((o) => o.key === key);
+
+  it('uses the published weights where they exist', () => {
+    expect(options.chanceBasis).toBe('weights');
+    expect(find('# to dexterity')?.weight).toBeGreaterThan(1);
+  });
 
   it('gives the shares of one affix side a total of 1', () => {
-    const total = suffixes.reduce((sum, o) => sum + o.chance, 0);
+    const total = suffixes.reduce((sum, o) => sum + (o.chance ?? 0), 0);
     expect(total).toBeCloseTo(1, 6);
   });
 
-  it('counts the tiers the item level actually allows', () => {
-    const dexterity = suffixes.find((o) => o.key === '# to dexterity');
+  it('sums a ladder’s weight over the tiers the item level allows', () => {
+    const dexterity = find('# to dexterity');
+    // 8 reachable tiers at 1000 each — the ladder's weight, not one tier's.
     expect(dexterity?.eligibleTiers).toBe(8);
+    expect(dexterity?.weight).toBe(8000);
   });
 
-  it('ranks a deep ladder above a shallow one', () => {
-    // 8 reachable tiers against 1 — eight times the space in the pool.
-    expect(chanceOf('# to dexterity')).toBeCloseTo(8 * chanceOf('energy shield recharge rate'), 6);
+  it('ranks a common modifier above a rare one by the game’s own numbers', () => {
+    const fire = find('#% to fire resistance');
+    const chaos = find('#% to chaos resistance');
+
+    // Not a tier-count artefact: fire has 7 reachable tiers and chaos 5, yet
+    // fire is far more than 7/5 as likely, because its tiers weigh more.
+    expect(fire?.weight).toBeGreaterThan((chaos?.weight ?? 0) * 4);
+    expect(fire?.chance ?? 0).toBeGreaterThan(chaos?.chance ?? 0);
   });
 
-  it('shrinks the pool as the item level falls', () => {
-    const low = pool.options('Pauascale Gloves', 20).suffix;
-    const deep = low.find((o) => o.key === '# to dexterity');
+  it('drops a ladder’s weight as the item level falls', () => {
+    const low = pool.options('Pauascale Gloves', 20).suffix.find((o) => o.key === '# to dexterity');
 
-    expect(deep?.eligibleTiers).toBeLessThan(8);
+    expect(low?.eligibleTiers).toBeLessThan(8);
+    expect(low?.weight ?? 0).toBeLessThan(8000);
   });
 
   it('gives blocked modifiers no share, and leaves them out of the total', () => {
@@ -157,9 +205,18 @@ describe('how likely each modifier is', () => {
       '#% increased flask life recovery rate',
     ]).prefix;
 
-    expect(prefixes.filter((o) => o.blockedBy !== null).every((o) => o.chance === 0)).toBe(true);
+    expect(prefixes.filter((o) => o.blockedBy !== null).every((o) => o.chance === null)).toBe(true);
     // The remaining shares still add up: what cannot roll is out of the
     // denominator, so the numbers describe what can actually happen next.
-    expect(prefixes.reduce((sum, o) => sum + o.chance, 0)).toBeCloseTo(1, 6);
+    expect(prefixes.reduce((sum, o) => sum + (o.chance ?? 0), 0)).toBeCloseTo(1, 6);
+  });
+
+  it('reports an unknown chance rather than inventing one', () => {
+    // A base with no published weights falls back to tier density, and says so.
+    const unweighted = pool.options('Rusted Sword', 80);
+    if (unweighted.suffix.length === 0) return; // base not in the dataset
+
+    expect(unweighted.chanceBasis).toBe('tiers');
+    expect(unweighted.suffix.every((o) => o.weight === null)).toBe(true);
   });
 });

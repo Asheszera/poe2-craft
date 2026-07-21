@@ -123,7 +123,12 @@ function describePool(item: ParsedItem): string {
           : `best here is T${option.bestTier}/${option.tierTotal}` +
             (option.topTierLevel === null ? '' : `, T1 needs ilvl ${option.topTierLevel}`);
       const tags = option.tags.length > 0 ? ` [${option.tags.join(' ')}]` : '';
-      const share = `~${(option.chance * 100).toFixed(1)}% of the pool`;
+      // Null means no weight is published for this modifier on this base. Said
+      // plainly, because a missing number invites the model to invent one.
+      const share =
+        option.chance === null
+          ? 'chance unknown'
+          : `${(option.chance * 100).toFixed(1)}% chance to hit`;
       return `    - ${option.text} — ${ceiling}, ${share}${tags}`;
     });
 
@@ -132,7 +137,15 @@ function describePool(item: ParsedItem): string {
     return `  - ${label} (${available.length} available${note}):\n${shown.join('\n')}${more}`;
   };
 
-  return `${side('prefixes', options.prefix)}\n${side('suffixes', options.suffix)}`;
+  // Which distribution the percentages come from is not a footnote: one is the
+  // game's own weighting, the other is a stand-in, and a plan built on the
+  // second must not be presented with the confidence of the first.
+  const provenance =
+    options.chanceBasis === 'weights'
+      ? '  (percentages are the game\'s published spawn weights for this base)'
+      : '  (no spawn weights are published for this base, so percentages assume every reachable tier is equally likely — treat them as rough)';
+
+  return `${side('prefixes', options.prefix)}\n${side('suffixes', options.suffix)}\n${provenance}`;
 }
 
 /**

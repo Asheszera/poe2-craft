@@ -108,12 +108,14 @@ export function CraftAdvisorView(): React.JSX.Element {
             options={pool.data.prefix}
             present={new Set(pool.data.present)}
             itemLevel={pool.data.itemLevel}
+            chanceBasis={pool.data.chanceBasis}
           />
           <PoolList
             title="Suffixes this base can roll"
             options={pool.data.suffix}
             present={new Set(pool.data.present)}
             itemLevel={pool.data.itemLevel}
+            chanceBasis={pool.data.chanceBasis}
           />
         </div>
       )}

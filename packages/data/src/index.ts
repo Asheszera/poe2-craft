@@ -1,9 +1,10 @@
 import rawCurrencies from '../data/currencies.json' with { type: 'json' };
 import rawModPool from '../data/mod-pool.json' with { type: 'json' };
+import rawModWeights from '../data/mod-weights.json' with { type: 'json' };
 import rawMods from '../data/mods.json' with { type: 'json' };
 import rawStats from '../data/stats.json' with { type: 'json' };
 import { ModPoolIndex } from './modPool.js';
-import type { CurrencyDataset, ModPoolDataset } from './schemas.js';
+import type { CurrencyDataset, ModPoolDataset, ModWeightDataset } from './schemas.js';
 import type { EnrichmentContext } from './enrich.js';
 import { ModIndex } from './modIndex.js';
 import type { ModDataset, StatDataset } from './schemas.js';
@@ -36,12 +37,13 @@ export const modsDataset = rawMods as ModDataset;
 // keeps the export stable if the JSON's inferred shape ever narrows.
 export const currenciesDataset: CurrencyDataset = rawCurrencies;
 export const modPoolDataset = rawModPool as ModPoolDataset;
+export const modWeightsDataset = rawModWeights as ModWeightDataset;
 
 let poolIndex: ModPoolIndex | null = null;
 
 /** Lazily built: 426 pools and ~2.5k modifier lookups, paid on first use. */
 export function defaultModPool(): ModPoolIndex {
-  poolIndex ??= new ModPoolIndex(modPoolDataset, modsDataset);
+  poolIndex ??= new ModPoolIndex(modPoolDataset, modsDataset, modWeightsDataset);
   return poolIndex;
 }
 

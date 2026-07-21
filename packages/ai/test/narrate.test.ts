@@ -160,6 +160,25 @@ Item Level: 69
     expect(prompt).toMatch(/\[[a-z_ ]*attack[a-z_ ]*\]/);
   });
 
+  it('gives each option the game’s own chance, and names the source', () => {
+    const prompt = buildCraftPrompt(
+      requestFor(`Item Class: Gloves
+Rarity: Rare
+Corpse Claw
+Pauascale Gloves
+--------
+Item Level: 69
+--------
++80 to maximum Mana
+`),
+    );
+
+    expect(prompt).toMatch(/\d+\.\d% chance to hit/);
+    // Which distribution the numbers come from decides how much weight a plan
+    // may put on them, so it is stated rather than assumed.
+    expect(prompt).toContain("published spawn weights for this base");
+  });
+
   it('leaves out modifiers the item can no longer roll', () => {
     // Flask life recovery blocks flask *mana* recovery: same exclusion group,
     // different text, different ladder. Offering it would be advice to spend

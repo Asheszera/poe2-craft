@@ -76,18 +76,24 @@ already occupied — this is what is still missing *and* still possible.
 
 ### About the percentages
 
-Each line carries its share of the pool. Treat it as **relative likelihood, not
-a probability the game guarantees**:
+Each line carries the chance that a new modifier on that side lands on it. Where
+the note under the list says these are the game's published spawn weights, they
+are the real distribution and you should plan with them:
 
-- It is derived from how many of that modifier's tiers this item level allows,
-  divided by the pool total. A ladder with 8 reachable tiers occupies eight
-  times the space of one with a single tier, and is that much likelier to land.
-- The game's own table publishes eligibility, not rarity, and no public source
-  carries GGG's real weights. So these shares understate genuinely rare
-  modifiers.
-- Use them to rank and to compare — "roughly one in nine" — never to promise an
-  outcome or to compute an expected cost in currency. If asked how many orbs a
-  craft will take, say that the data does not support that answer.
+- Rank with them. Resistances at 9% each and chaos resistance at 1.6% is the
+  difference between a plan that works and one that sounds good.
+- They are the chance **per rolled modifier on that side**, not per orb and not
+  cumulative. An Exalted Orb adds one modifier to either side.
+- You may say "roughly one in ten". Do not multiply them into a total currency
+  cost unless the player asks for an estimate and you label it as one — the
+  weights are exact, the number of attempts is not.
+- `chance unknown` means no weight is published for that modifier on this base.
+  Say so if it matters to the plan. Never substitute a guess.
+
+Where the note instead says weights are unpublished for this base, the
+percentages assume every reachable tier is equally likely. That is a stand-in,
+not the game's odds: use it only to separate the plausible from the hopeless,
+and say that the exact odds are not known for this base.
 
 ## Crafting methods available in the live game
 

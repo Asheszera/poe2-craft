@@ -1,4 +1,4 @@
-import type { ModDataset, ModEntry, ModPoolDataset } from './schemas.js';
+import type { ModDataset, ModEntry, ModPoolDataset, ModWeightDataset } from './schemas.js';
 
 /**
  * What a base can still roll, and how good it can get here.
@@ -35,18 +35,35 @@ export interface PoolOption {
   /** How many of this ladder's tiers the item level allows. */
   readonly eligibleTiers: number;
   /**
-   * Share of this affix side's rollable pool, 0–1. See `#collapse` for what
-   * this is and, more importantly, what it is not.
+   * The game's published spawn weight, summed over the tiers this item level
+   * allows. Null when no weight is published for this modifier on this base —
+   * which is not the same as zero, and must not be rendered as a small number.
    */
-  readonly chance: number;
+  readonly weight: number | null;
+  /**
+   * Share of this affix side's rollable pool, 0–1. Null when the weight is
+   * unknown: a share invented for one option would silently shrink every other.
+   */
+  readonly chance: number | null;
 }
+
+/**
+ * Where an affix side's shares came from.
+ *
+ * `weights` — GGG's published spawn weights (poe2db). `tiers` — the fallback
+ * for bases with no published weights, where each eligible tier counts as one
+ * equally likely outcome. The two are not comparable and the interface says
+ * which is in play.
+ */
+export type ChanceBasis = 'weights' | 'tiers';
 
 export interface PoolOptions {
   readonly prefix: PoolOption[];
   readonly suffix: PoolOption[];
+  readonly chanceBasis: ChanceBasis;
 }
 
-const EMPTY: PoolOptions = { prefix: [], suffix: [] };
+const EMPTY: PoolOptions = { prefix: [], suffix: [], chanceBasis: 'tiers' };
 
 export class ModPoolIndex {
   readonly #dataset: ModPoolDataset;
@@ -54,8 +71,11 @@ export class ModPoolIndex {
   /** Canonical template → the groups any modifier with that text belongs to. */
   readonly #groupsByKey = new Map<string, Set<string>>();
 
-  constructor(dataset: ModPoolDataset, mods: ModDataset) {
+  readonly #weights: ModWeightDataset | null;
+
+  constructor(dataset: ModPoolDataset, mods: ModDataset, weights: ModWeightDataset | null = null) {
     this.#dataset = dataset;
+    this.#weights = weights;
     for (const entry of mods.entries) {
       this.#modsById.set(entry.id, entry);
 
@@ -63,6 +83,31 @@ export class ModPoolIndex {
       if (!groups) this.#groupsByKey.set(entry.key, (groups = new Set()));
       for (const group of entry.groups) groups.add(group);
     }
+  }
+
+  /**
+   * The published spawn weight for one tier on one base, or null.
+   *
+   * Weights are per tag in the game data; the source resolves them per item
+   * class (and per attribute variant, since a strength glove and a dexterity
+   * glove roll different pools), so the lookup is by base rather than by tag.
+   */
+  #weightOf(entry: ModEntry, baseName: string): number | null {
+    const context = this.#weights?.bases[baseName];
+    const table = context === undefined ? undefined : this.#weights?.contexts[context];
+    if (!table) return null;
+
+    for (const group of entry.groups) {
+      const weight = table[`${entry.key}|${entry.requiredLevel}|${entry.generationType}|${group}`];
+      if (weight !== undefined) return weight;
+    }
+    return null;
+  }
+
+  /** True when this base has published weights to work from at all. */
+  hasWeights(baseName: string): boolean {
+    const context = this.#weights?.bases[baseName];
+    return context !== undefined && this.#weights?.contexts[context] !== undefined;
   }
 
   /**
@@ -106,35 +151,38 @@ export class ModPoolIndex {
     if (!pool) return EMPTY;
 
     const occupied = this.occupiedGroups(presentKeys);
+    const basis: ChanceBasis = this.hasWeights(baseName) ? 'weights' : 'tiers';
 
     return {
-      prefix: this.#collapse(pool.prefix, itemLevel, occupied),
-      suffix: this.#collapse(pool.suffix, itemLevel, occupied),
+      prefix: this.#collapse(pool.prefix, itemLevel, occupied, baseName, basis),
+      suffix: this.#collapse(pool.suffix, itemLevel, occupied, baseName, basis),
+      chanceBasis: basis,
     };
   }
 
   /**
    * One option per ladder: the best tier reachable, where the top sits, and how
-   * large a share of the pool it occupies.
+   * likely it is to roll.
    *
-   * **What `chance` is.** The datamined table gives every modifier a spawn
-   * weight of exactly 0 or 1 — eligibility, not rarity (see ADR-005). Under the
-   * only model that data supports, each *eligible tier entry* is one equally
-   * likely outcome, so a ladder's share is its reachable tier count over the
-   * side's total. That is not a flat distribution: on Pauascale Gloves at item
-   * level 80, `+# to Dexterity` has 8 reachable tiers against 1 for
-   * `increased Energy Shield Recharge Rate`, so it is eight times as likely.
+   * **How `chance` is computed.** Where the game's spawn weights are published
+   * (ADR-005 addendum), a ladder's weight is the sum over the tiers this item
+   * level allows, and its chance is that over the side's total. This is the
+   * real distribution — `+# to Strength` at weight 1000 against a modifier at
+   * 100 is genuinely ten times as likely.
    *
-   * **What it is not.** It is not GGG's weighting. If the game weights modifiers
-   * beyond eligibility — and players report that it does — no published source
-   * carries those numbers, so this understates rare modifiers and overstates
-   * common ones. It is stated as a share of the pool, never as a guarantee, and
-   * everything that renders it says where it comes from.
+   * **Where they are not published**, each eligible tier counts as one equally
+   * likely outcome instead. That fallback is not the game's own odds, which is
+   * why `chanceBasis` travels with the result and every renderer states it.
+   *
+   * A modifier with no published weight on a weighted base gets `chance: null`,
+   * never a guess: inventing one share silently shrinks every other.
    */
   #collapse(
     pool: Record<string, number>,
     itemLevel: number | null,
     occupied: ReadonlySet<string>,
+    baseName: string,
+    basis: ChanceBasis,
   ): PoolOption[] {
     const byLadder = new Map<string, PoolOption & { topTierLevel: number | null }>();
 
@@ -157,6 +205,12 @@ export class ModPoolIndex {
       }
 
       const eligibleTiers = (current?.eligibleTiers ?? 0) + 1;
+      // Weights are per tier, so a ladder's weight is the sum over the tiers
+      // this item level can actually roll. A tier gated above the item does not
+      // contribute, which is why the sum happens here and not up front.
+      const tierWeight = this.#weightOf(entry, baseName);
+      const weight =
+        tierWeight === null ? current?.weight ?? null : (current?.weight ?? 0) + tierWeight;
 
       if (!current || entry.tier < current.bestTier) {
         byLadder.set(ladder, {
@@ -170,10 +224,11 @@ export class ModPoolIndex {
           tags: entry.tags,
           blockedBy: entry.groups.find((group) => occupied.has(group)) ?? null,
           eligibleTiers,
-          chance: 0, // filled below, once the pool total is known
+          weight,
+          chance: null, // filled below, once the side's total is known
         });
       } else {
-        byLadder.set(ladder, { ...current, topTierLevel, eligibleTiers });
+        byLadder.set(ladder, { ...current, topTierLevel, eligibleTiers, weight });
       }
     }
 
@@ -183,15 +238,21 @@ export class ModPoolIndex {
     // denominator too: the shares must describe what can actually roll next,
     // not what could have rolled on an empty item.
     const rollable = options.filter((option) => option.blockedBy === null);
-    const total = rollable.reduce((sum, option) => sum + option.eligibleTiers, 0);
+    const share = (option: PoolOption): number | null =>
+      basis === 'weights' ? option.weight : option.eligibleTiers;
+    const total = rollable.reduce((sum, option) => sum + (share(option) ?? 0), 0);
 
     // Blocked options sink to the bottom: still visible, never mistaken for
     // something the item can actually roll next.
     return options
-      .map((option) => ({
-        ...option,
-        chance: total === 0 || option.blockedBy !== null ? 0 : option.eligibleTiers / total,
-      }))
+      .map((option) => {
+        const value = share(option);
+        return {
+          ...option,
+          chance:
+            option.blockedBy !== null ? null : total === 0 || value === null ? null : value / total,
+        };
+      })
       .sort(
         (a, b) =>
           Number(a.blockedBy !== null) - Number(b.blockedBy !== null) ||

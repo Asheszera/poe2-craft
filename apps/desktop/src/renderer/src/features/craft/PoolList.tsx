@@ -24,11 +24,13 @@ export function PoolList({
   options,
   present,
   itemLevel,
+  chanceBasis,
 }: {
   title: string;
   options: PoolOption[];
   present: Set<string>;
   itemLevel: number | null;
+  chanceBasis: 'weights' | 'tiers';
 }): React.JSX.Element {
   const [query, setQuery] = useState('');
   const [hideTaken, setHideTaken] = useState(true);
@@ -117,13 +119,23 @@ export function PoolList({
                 <span className={option.bestTier === 1 ? 'text-accent' : undefined}>
                   best T{option.bestTier}/{option.tierTotal}
                 </span>
-                {!unavailable && option.chance > 0 && (
-                  <span
-                    title={`${option.eligibleTiers} of this modifier's tiers can roll at this item level, out of ${Math.round(option.eligibleTiers / option.chance)} in the pool`}
-                  >
-                    {(option.chance * 100).toFixed(1)}% of pool
-                  </span>
-                )}
+                {!unavailable &&
+                  (option.chance === null ? (
+                    <span className="text-ink-dim/70" title="No spawn weight is published here">
+                      chance unknown
+                    </span>
+                  ) : (
+                    <span
+                      className={option.chance >= 0.08 ? 'text-ink-muted' : undefined}
+                      title={
+                        option.weight === null
+                          ? `${option.eligibleTiers} reachable tiers`
+                          : `spawn weight ${option.weight} across ${option.eligibleTiers} reachable tiers`
+                      }
+                    >
+                      {(option.chance * 100).toFixed(1)}%
+                    </span>
+                  ))}
                 {excluded && (
                   <span className="text-ink-muted">
                     blocked — this item already has a {option.blockedBy} modifier
@@ -146,11 +158,12 @@ export function PoolList({
 
       {/*
         The percentage is the kind of number that gets trusted more than it
-        deserves, so what it is sits next to it rather than in a manual.
+        deserves, so where it comes from sits next to it rather than in a manual.
       */}
       <footer className="border-t border-line px-3 py-2 text-[10px] leading-relaxed text-ink-dim">
-        Share of the pool is how many of a modifier's tiers this item level allows, over the pool
-        total — relative likelihood, not the game's own odds. GGG does not publish modifier weights.
+        {chanceBasis === 'weights'
+          ? "Chance that a new modifier on this side lands on this one, from the game's published spawn weights for this base. Per rolled modifier, not per orb."
+          : 'No spawn weights are published for this base, so percentages assume every reachable tier is equally likely. Rough ranking only, not the game’s odds.'}
       </footer>
     </section>
   );

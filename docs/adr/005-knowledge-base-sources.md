@@ -68,51 +68,104 @@ now marks those `blockedBy`, and the prompt drops them entirely.
 intent reaches the pool at all: "more DPS" is not the name of any modifier, and
 without tags the model has to guess which lines serve the goal.
 
-**Not available: spawn weights.** `spawn_weights` exists but every weight in the
-entire export is 0 or 1 — eligibility, not rarity. So this dataset supports
-"which modifiers can roll here", never "how likely each one is". No expected-cost
-or probability model can be built on it, and one built anyway would be inventing
-the precision that makes it look trustworthy. If weighted data ever appears, it
-belongs here; until then the advisor counts options and does not price gambles.
+**Dropped, and this was a mistake — see the correction below.** `spawn_weights`
+in the RePoE export is 0 or 1 on every row, which was read as "PoE2 has no
+modifier weights". The real weights exist; that export is simply wrong about
+them.
 
-## Addendum (2026-07-21) — the search for real modifier weights, and what to do without them
+## Addendum (2026-07-21) — modifier weights: wrong once, then found
 
-Players observe that some modifiers land far more often than others, so the
-binary weights above were treated as a gap to close rather than a fact to
-accept. Four sources were checked:
+PoE2 **does** have graded modifier spawn weights, they **are** public, and the
+first pass through this concluded the opposite. Recording how, because the way
+the error survived scrutiny matters more than the error.
 
-| Source | Result |
+### The claim that was wrong
+
+"Every spawn weight in the data is 0 or 1, so PoE2 weights modifiers by
+eligibility only, and no probability model is possible." Four sources appeared
+to agree, and the RePoE exporter's source seemed to close the case: it passes
+`SpawnWeight_Values` through untouched, so the 0s and 1s looked like the game's
+own. That reasoning was sound about the code and wrong about the data.
+
+### What the data actually says
+
+poe2db embeds the dataset behind its crafting calculator directly in the page,
+one object per modifier: `{"DropChance":"1000","Level":"1","Name":"of the
+Brute","spawn_no":["ring","amulet","belt","str_armour",…]}`. Weights are graded —
+1000, 800, 500, 400, 300, 250, 125, 100 — exactly as in PoE1.
+
+The same modifier, in both sources:
+
+| Source | `of the Brute` (`Strength1`, +5–8 Strength) |
 | --- | --- |
-| `repoe-fork.github.io/poe2/mods.min.json` | `spawn_weights` present, every value 0 or 1; `generation_weights` empty on all 16.7k rows |
-| `poe2db.tw` | mod tables carry no weight column at all |
-| `poe2wiki.net` cargo `mod_spawn_weights` | table structure is `ordinal` + `tag` — no weight field |
-| `poe-tool-dev/dat-schema` (PoE2) | `SpawnWeight_Values` is declared `i32[]`, so the game *has* the column |
+| poe2db | `DropChance` **1000**, tags `ring, amulet, belt, str_armour, …` |
+| RePoE fork | `spawn_weights` **1**, tags `ring, amulet, belt, str_armour, …` |
 
-The schema says the column exists; three independent readers of it publish
-nothing but eligibility. Either PoE2's table genuinely carries 0/1, or every
-public exporter drops the values — and this project cannot tell which. So: **no
-source of GGG's modifier weights is available, and none is assumed.**
+Identical tag list in identical order — the same row of `Mods.dat` — and a
+different number. **The RePoE fork's PoE2 export is lossy for spawn weights.**
+Its parser code is faithful; whatever it reads those integers from is not.
 
-### What is reported instead
+### How the error survived
 
-Something weaker, sourced, and explicitly labelled. Under the only model the
-data supports, each *eligible tier entry* is one equally likely outcome, so a
-ladder's share of the pool is its reachable tier count over the side's total.
+Two failures compounded, and only the second was bad luck:
 
-That distribution is **not flat**. On Pauascale Gloves at item level 80:
+1. **A regex that quietly excluded the answer.** The extraction used
+   `"DropChance":\s*([0-9.]+)` — unquoted numbers only. poe2db writes graded
+   weights as strings (`"DropChance":"1000"`) and the binary ones as bare
+   numbers. The pattern matched every 0 and 1 and *nothing else*, then reported
+   "distinct values: 0, 1" with total confidence. A filter that removes exactly
+   the evidence that would refute the hypothesis is the worst kind of bug,
+   because its output looks like a finding.
+2. **A first sample that agreed with it.** `Claws` was checked first and its page
+   really does carry only a misc subset with 0/1 weights. Corroboration arrived
+   before contradiction had a chance.
 
-```
-  +# to Dexterity                        8 tiers eligible   8.9% of the pool
-  #% increased Attack Speed              4 tiers            4.4%
-  #% increased Energy Shield Recharge    1 tier             1.1%
-```
+The lesson is not "write better regexes". It is that **a negative result about a
+data source deserves the same scrutiny as a positive one.** "This does not
+exist" was accepted on weaker evidence than "this exists" would have needed, and
+it was published in an ADR, where it would have been believed later.
 
-Dexterity is eight times as likely as the recharge modifier, and that is read
-from the data rather than assumed. Blocked modifiers are excluded from the
-denominator, so the shares describe what can actually roll next.
+### Where the weights live
 
-Its limits travel with it. `PoolOption.chance` is documented as relative
-likelihood; the list footer and the craft prompt both state that GGG does not
-publish weights and that these shares understate genuinely rare modifiers; and
-the prompt forbids converting them into an expected number of orbs. A number
-this easy to trust has to carry its own caveat.
+| Item class | URL pattern | Example |
+| --- | --- | --- |
+| Jewellery, weapons, quivers | `/us/{Class}` | `/us/Amulets` — 315 records, 203 weighted, max 1000 |
+| Armour | `/us/{Class}_{attributes}` | `/us/Body_Armours_str` — 469 records, 144 weighted |
+
+`/us/Gloves`, `/us/Body_Armours` and the other bare armour URLs carry no calc
+data at all, which is why armour first looked unweighted. Each record has the
+modifier text, its required level, its weight, and `spawn_no` — the tag list the
+weight applies to, so a weight can be resolved against a specific base's tags.
+
+### Decision
+
+`scrape-weights.ts` fetches one page per item class — and per attribute variant
+for armour — and writes `data/mod-weights.json`: `contexts[page][key] = weight`,
+plus `bases[name] = page`. The join key is
+`template|level|prefix\|suffix|group`, which identifies one tier of one ladder in
+both datasets. **87%** of scraped weights join to `mods.json`; the remainder are
+the desecrated pool, which sits at a fixed level 65 and does not correspond to
+ordinary affix tiers. Joining those by force would be worse than leaving them out.
+
+`PoolOption` now carries `weight` (published, summed over the tiers the item
+level allows) and `chance` (that over the affix side's total). Both are nullable
+and `PoolOptions.chanceBasis` is `weights` or `tiers`, because three states have
+to stay distinguishable:
+
+- weights published, modifier covered → the game's real odds;
+- weights published, this modifier absent → `chance: null`, shown as unknown.
+  Inventing one share silently shrinks every other;
+- no weights for this base at all → `tiers` basis, the old approximation, and
+  every renderer says so.
+
+The numbers this produces are recognisably the game's. On Pauascale Gloves at
+item level 80, each elemental resistance carries 1000 per tier and chaos
+resistance 250 — a fourfold gap that counting tiers had flattened to nothing.
+
+### What is still missing
+
+Weapons other than maces, sceptres, spears, staves, wands, bows and crossbows —
+swords, axes, daggers, claws, flails, warstaves — have pages with no graded
+weights, as do the `str_dex_int` armour variants. Those bases fall back to the
+tier approximation and say so. The scraper prints the list on every run rather
+than filling the gap with something invented.

@@ -51,12 +51,13 @@ export const PoolOptionSchema = z.object({
   blockedBy: z.string().nullable(),
   /** Tiers of this ladder the item level allows. */
   eligibleTiers: z.number().int(),
+  /** Published spawn weight summed over eligible tiers; null when unpublished. */
+  weight: z.number().nullable(),
   /**
-   * Share of the rollable pool, 0–1 — derived from tier density, because the
-   * datamined table publishes eligibility rather than GGG's real weights.
-   * Anything rendering it must say so.
+   * Chance this modifier is the one that lands, 0–1. Null when no weight is
+   * published for it — rendered as "unknown", never as a small number.
    */
-  chance: z.number(),
+  chance: z.number().nullable(),
 });
 export type PoolOption = z.infer<typeof PoolOptionSchema>;
 
@@ -179,6 +180,11 @@ export const ipcContract = {
       itemLevel: z.number().int().nullable(),
       prefix: z.array(PoolOptionSchema),
       suffix: z.array(PoolOptionSchema),
+      /**
+       * `weights` — the game's published spawn weights. `tiers` — the stand-in
+       * used for bases with none, where each reachable tier counts equally.
+       */
+      chanceBasis: z.enum(['weights', 'tiers']),
       /** Templates already on the item, so the UI can mark them as taken. */
       present: z.array(z.string()),
     }),
