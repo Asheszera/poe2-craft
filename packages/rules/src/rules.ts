@@ -136,6 +136,40 @@ export const RULES: readonly Rule[] = [
   },
 
   {
+    id: 'rare-full-decent',
+    priority: 65,
+    when: (f) =>
+      f.item.rarity === 'Rare' &&
+      f.isCraftable &&
+      f.isFull &&
+      (f.tierQuality ?? 0) > POOR &&
+      (f.tierQuality ?? 0) < EXCELLENT,
+    then: (f) =>
+      action({
+        action: 'divine-orb',
+        // The gap this fills: a filled rare with respectable but imperfect
+        // tiers previously matched no rule at all and produced no advice.
+        label: 'Improve the rolls you already have',
+        reasoning: `Every slot is used and the tiers are decent rather than exceptional (quality ${(f.tierQuality ?? 0).toFixed(2)}). No currency can add to this item, so the remaining gains are inside the tiers it already has: a Divine Orb rerolls those numbers. The alternative is removing the weakest affix and re-rolling it, which risks the good ones.`,
+        risk: 'low',
+      }),
+  },
+
+  {
+    id: 'normal-target-a-modifier',
+    priority: 62,
+    when: (f) => f.item.rarity === 'Normal' && f.isCraftable && (f.item.itemLevel ?? 0) >= 60,
+    then: () =>
+      action({
+        action: 'essence',
+        label: 'Start with a guaranteed modifier',
+        reasoning:
+          'A high item level base is worth starting deterministically: an essence upgrades the item and guarantees the modifier family it is named for, instead of leaving the first roll to chance. Transmutation is cheaper but decides nothing.',
+        risk: 'low',
+      }),
+  },
+
+  {
     id: 'rare-remove-weak-affix',
     priority: 55,
     when: (f) =>

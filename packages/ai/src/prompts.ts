@@ -1,3 +1,4 @@
+import { craftingToolsetPrompt, currenciesDataset } from '@poe2/data';
 import { affixBudget, affixMods, type ItemMod } from '@poe2/models';
 import craftTemplate from '../prompts/craft.md?raw';
 import jsonOutputTemplate from '../prompts/json-output.md?raw';
@@ -67,6 +68,14 @@ function describeMod(mod: ItemMod): string {
 
 const orUnknown = (value: string | null): string => value ?? 'unknown';
 
+/**
+ * Built once: the toolset is the same for every item, and rebuilding it per
+ * request would walk 780 entries to produce an identical string.
+ */
+let craftingMethods: string | null = null;
+const toolsetPrompt = (): string =>
+  (craftingMethods ??= craftingToolsetPrompt(currenciesDataset));
+
 export function buildSystemPrompt(extraInstructions?: string): string {
   if (!extraInstructions || extraInstructions.trim().length === 0) return systemTemplate;
 
@@ -112,6 +121,7 @@ export function buildCraftPrompt({ item, deterministic, context }: NarrativeRequ
       ),
       'no rule matched this item',
     ),
+    craftingMethods: toolsetPrompt(),
     craftIntent:
       context.craftIntent ??
       'The player did not say. Assume a practical, cost-aware improvement and note that you assumed it.',

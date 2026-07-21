@@ -54,6 +54,26 @@ goal is about the character, not about the item in isolation:
 - If the item cannot serve the stated intent — wrong base, wrong modifier pool,
   corrupted — say that plainly first instead of planning around it.
 
+## Crafting methods available in the live game
+
+{{craftingMethods}}
+
+This list comes from the game's own data, not from memory. Plan with it:
+
+- **Only name methods that appear above.** If you cannot recall a specific
+  essence or omen by name, describe what you need it to do
+  ("an essence that guarantees added cold damage") rather than inventing one.
+- **Consider the whole toolset, not just the basic orbs.** A plan that only ever
+  reaches for Transmutation, Regal, Exalted and Divine is ignoring most of the
+  game. Essences make an outcome deterministic; omens change how another
+  currency behaves; runes add a fixed modifier through a socket; the
+  Greater and Perfect variants of an orb bias it towards higher tiers.
+- **Where two routes reach the same result, give the cheap one and name the
+  expensive deterministic one as the alternative**, so the player can choose by
+  budget rather than by guesswork.
+- If a method's exact behaviour in the current league is something you are not
+  sure of, say so in that step instead of asserting it.
+
 ## Player context
 
 - League: {{league}}

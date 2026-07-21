@@ -102,6 +102,9 @@ importers:
       '@anthropic-ai/sdk':
         specifier: ^0.112.4
         version: 0.112.4(zod@4.4.3)
+      '@poe2/data':
+        specifier: workspace:*
+        version: link:../data
       '@poe2/models':
         specifier: workspace:*
         version: link:../models
@@ -112,9 +115,6 @@ importers:
         specifier: ^4.0.5
         version: 4.4.3
     devDependencies:
-      '@poe2/data':
-        specifier: workspace:*
-        version: link:../data
       '@poe2/parser':
         specifier: workspace:*
         version: link:../parser

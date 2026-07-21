@@ -31,6 +31,22 @@ export function analyse(item: ParsedItem, options: EngineOptions = {}): Determin
     .sort((a, b) => b.priority - a.priority)
     .map((rule) => rule.then(facts));
 
+  // An item that matches no rule is a gap in the rule set, not a verdict on the
+  // item — and "no advice" reads like the app failed. Saying so plainly is
+  // honest, and it keeps the AI layer with something to explain.
+  if (recommendations.length === 0) {
+    recommendations.push({
+      action: 'assess',
+      label: 'No rule covers this item yet',
+      reasoning:
+        'The rule set has nothing to say about this combination. That is a gap in the advisor, not a judgement on the item — the parsed modifiers and tiers above are still accurate.',
+      successChance: null,
+      estimatedCost: null,
+      estimatedProfit: null,
+      risk: 'none',
+    });
+  }
+
   const finishedAt = performance.now();
 
   return {

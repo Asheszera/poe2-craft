@@ -87,3 +87,23 @@ export const ModDatasetSchema = DatasetMetaSchema.extend({
   entries: z.array(ModEntrySchema),
 });
 export type ModDataset = z.infer<typeof ModDatasetSchema>;
+
+/**
+ * A currency, rune or consumable, as the live game names it.
+ *
+ * The crafting advisor plans with these names, so they come from the API rather
+ * than from anyone's memory: essences, omens and league consumables change too
+ * often for a hardcoded list to stay honest.
+ */
+export const CurrencyEntrySchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  /** The trade site's grouping — `Currency`, `Runes`, `Vaal`, `Breach`, … */
+  category: z.string().min(1),
+});
+export type CurrencyEntry = z.infer<typeof CurrencyEntrySchema>;
+
+export const CurrencyDatasetSchema = DatasetMetaSchema.extend({
+  entries: z.array(CurrencyEntrySchema),
+});
+export type CurrencyDataset = z.infer<typeof CurrencyDatasetSchema>;

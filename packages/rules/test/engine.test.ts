@@ -178,6 +178,45 @@ Item Level: 80
   });
 });
 
+describe('coverage', () => {
+  it('advises on a filled rare with decent-but-imperfect tiers', () => {
+    // The observed gap: a real six-affix item scored 88 and produced no advice
+    // at all, because every rule wanted either excellence or failure.
+    const actions = advice(`Item Class: Gloves
+Rarity: Rare
+Corpse Claw
+Pauascale Gloves
+--------
+Item Level: 69
+--------
+{ Prefix Modifier "Opalescent" (Tier: 3) - Mana }
++80(80-89) to maximum Mana
+{ Prefix Modifier "Freezing" (Tier: 5) - Damage, Elemental, Cold, Attack }
+Adds 10(9-10) to 16(15-17) Cold damage to Attacks
+{ Prefix Modifier "Deliberate" (Tier: 6) - Attack }
++107(85-123) to Accuracy Rating
+{ Suffix Modifier "of Siphoning" (Tier: 3) - Mana }
+Gain 24(21-27) Mana per enemy killed
+{ Suffix Modifier "of Ease" (Tier: 3) - Attack, Speed }
+9(8-10)% increased Attack Speed
+{ Suffix Modifier "of Regrowth" (Tier: 2) - Life, Attack }
+Gain 4 Life per Enemy Hit with Attacks
+`);
+
+    expect(actions).not.toEqual([]);
+    expect(actions).not.toContain('assess');
+  });
+
+  it('never returns an empty recommendation list', () => {
+    // "No advice" reads as a broken app. A named gap reads as an honest one.
+    const analysis = analyse(factsFor(CORRUPTED).item, { rules: [] });
+
+    expect(analysis.recommendations).toHaveLength(1);
+    expect(analysis.recommendations[0]?.action).toBe('assess');
+    expect(analysis.recommendations[0]?.reasoning).toMatch(/gap in the advisor/i);
+  });
+});
+
 describe('scoring', () => {
   it('rates a corrupted single-affix item below a healthy one', () => {
     const good = analyse(factsFor(RARE_OPEN_SLOTS).item).score;
