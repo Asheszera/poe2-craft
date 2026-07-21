@@ -11,9 +11,9 @@
     "@poe2/shared": "workspace:*"
   },
   "devDependencies": {
-    "@poe2/parser": "workspace:*",
     "@poe2/data": "workspace:*",
+    "@poe2/parser": "workspace:*",
     "typescript": "^5.7.2",
-    "vitest": "^2.1.8"
+    "vitest": "^3.2.7"
   }
 }

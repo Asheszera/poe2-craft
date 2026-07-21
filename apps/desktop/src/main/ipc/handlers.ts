@@ -1,10 +1,11 @@
 import { app, clipboard } from 'electron';
-import type { AnalysisContext } from '@poe2/models';
+import type { AnalysisContext, ItemAnalysis } from '@poe2/models';
 import { createProvider, presetFor, type AIDebugEvent, type NarrativeResponse } from '@poe2/ai';
 import type { PriceTable } from '@poe2/prices';
 import { appError, err, type Result } from '@poe2/shared';
 import { analyzeText } from '../analysis/pipeline.js';
 import type { ClipboardWatcher } from '../clipboard/watcher.js';
+import type { HistoryRepository } from '../history/repository.js';
 import type { SettingsStore } from '../settings/store.js';
 import type { IpcHandlers } from './registry.js';
 import { serializeResult } from './registry.js';
@@ -12,6 +13,7 @@ import { serializeResult } from './registry.js';
 export interface HandlerDeps {
   readonly watcher: ClipboardWatcher;
   readonly settings: SettingsStore;
+  readonly history: HistoryRepository;
   /** Traces provider traffic to the terminal. Development only. */
   readonly aiDebug?: ((event: AIDebugEvent) => void) | undefined;
 }
@@ -34,6 +36,27 @@ const contextFrom = (settings: SettingsStore, craftIntent: string | null): Analy
     craftIntent,
   };
 };
+
+/**
+ * Persists a successful analysis, and lets a storage failure pass.
+ *
+ * History is a record of work, not a precondition for it: a locked database or
+ * a full disk must not stop the player seeing their item. The analysis is
+ * returned either way and the failure is logged rather than surfaced.
+ */
+export function recordAnalysis(
+  history: HistoryRepository,
+  analysis: Result<ItemAnalysis>,
+): Result<ItemAnalysis> {
+  if (!analysis.ok) return analysis;
+
+  try {
+    history.save(analysis.value);
+  } catch (error) {
+    console.error('[history] could not store the analysis', error);
+  }
+  return analysis;
+}
 
 /**
  * The one path from raw item text to a narrative.
@@ -113,16 +136,33 @@ function priceTableFrom(settings: SettingsStore): PriceTable {
  * application together. Handlers remain thin adapters; anything with real logic
  * lives in a package and is tested without Electron.
  */
-export const createHandlers = ({ watcher, settings, aiDebug }: HandlerDeps): IpcHandlers => ({
+export const createHandlers = ({
+  watcher,
+  settings,
+  history,
+  aiDebug,
+}: HandlerDeps): IpcHandlers => ({
+  'history:list': ({ limit, offset }) => history.list(limit, offset),
+  'history:stats': () => history.stats(),
+  'history:remove': ({ id }) => {
+    history.remove(id);
+    return null;
+  },
+  'history:clear': () => {
+    history.clear();
+    return null;
+  },
+
   'app:info': () => ({
     version: app.getVersion(),
     platform: process.platform,
     electron: process.versions.electron ?? 'unknown',
   }),
 
-  'item:parse': ({ raw }) => serializeResult(analyzeText(raw)),
+  'item:parse': ({ raw }) => serializeResult(recordAnalysis(history, analyzeText(raw))),
 
-  'clipboard:parse': () => serializeResult(analyzeText(clipboard.readText())),
+  'clipboard:parse': () =>
+    serializeResult(recordAnalysis(history, analyzeText(clipboard.readText()))),
 
   'clipboard:getWatch': () => ({ enabled: watcher.isRunning }),
 
@@ -178,8 +218,14 @@ Item Level: 82
 
   'ai:narrate': async ({ raw, craftIntent }) => {
     const narrated = await narrateWith(settings, aiDebug, raw, craftIntent);
-    return narrated.ok
-      ? { ok: true, value: narrated.value.narrative }
-      : serializeResult(narrated);
+    if (!narrated.ok) return serializeResult(narrated);
+
+    // Attach to the stored entry so the narrative survives a restart. Matched
+    // on the item text: the entry was written the moment the item was captured,
+    // seconds before the model answered.
+    const entry = history.findByRaw(raw);
+    if (entry) history.attachNarrative(entry.id, narrated.value.narrative);
+
+    return { ok: true, value: narrated.value.narrative };
   },
 });

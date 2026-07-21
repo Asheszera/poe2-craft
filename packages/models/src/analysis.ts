@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ParsedItemSchema } from './item.js';
+import { ParsedItemSchema, RaritySchema } from './item.js';
 
 /**
  * Contracts between the analysis pipeline and its consumers.
@@ -100,6 +100,42 @@ export const ItemAnalysisSchema = z.object({
   narrative: NarrativeAnalysisSchema.nullable(),
 });
 export type ItemAnalysis = z.infer<typeof ItemAnalysisSchema>;
+
+/**
+ * A stored analysis.
+ *
+ * Denormalised on purpose: the list and the dashboard read `score`, `rarity`
+ * and the rest directly rather than re-parsing every row, while `raw` keeps the
+ * original text so an entry can be re-analysed after a parser or dataset
+ * improvement.
+ */
+export const HistoryEntrySchema = z.object({
+  id: z.number().int().positive(),
+  capturedAt: z.string(),
+  name: z.string(),
+  baseType: z.string(),
+  rarity: RaritySchema,
+  itemLevel: z.number().int().nullable(),
+  score: z.number().int(),
+  affixCount: z.number().int(),
+  /** Lines the parser could not attribute — the quality signal, kept per entry. */
+  unparsedCount: z.number().int(),
+  raw: z.string(),
+  narrative: NarrativeAnalysisSchema.nullable(),
+  notes: z.string().nullable(),
+});
+export type HistoryEntry = z.infer<typeof HistoryEntrySchema>;
+
+export const HistoryStatsSchema = z.object({
+  total: z.number().int(),
+  rares: z.number().int(),
+  bestScore: z.number().int(),
+  averageScore: z.number().int(),
+  withParseWarnings: z.number().int(),
+  narrated: z.number().int(),
+  firstCapturedAt: z.string().nullable(),
+});
+export type HistoryStats = z.infer<typeof HistoryStatsSchema>;
 
 /** User context handed to both the rules engine and the prompt builder. */
 export const AnalysisContextSchema = z.object({

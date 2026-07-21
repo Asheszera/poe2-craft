@@ -1,7 +1,10 @@
-import { useQuery } from '@tanstack/react-query';
-import { affixMods, exceedsAffixBudget } from '@poe2/models';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Loader2, Sparkles, Trash2 } from 'lucide-react';
 import { invoke } from '@/lib/ipc';
 import { useAppStore } from '@/app/store';
+
+const HISTORY_KEY = ['history'];
+const STATS_KEY = ['history-stats'];
 
 function Metric({
   label,
@@ -10,8 +13,6 @@ function Metric({
 }: {
   label: string;
   value: string;
-  // `| undefined` is required by `exactOptionalPropertyTypes`: JSX always
-  // passes the prop, so the absent case is an explicit undefined.
   hint?: string | undefined;
 }): React.JSX.Element {
   return (
@@ -23,65 +24,92 @@ function Metric({
   );
 }
 
+const RARITY_TEXT: Record<string, string> = {
+  Normal: 'text-rarity-normal',
+  Magic: 'text-rarity-magic',
+  Rare: 'text-rarity-rare',
+  Unique: 'text-rarity-unique',
+};
+
 /**
- * Session dashboard.
+ * Session-long history, read from the database rather than from memory.
  *
- * Metrics are computed from the in-memory session for now; stage 3 swaps the
- * source for the SQLite history repository without touching this component,
- * which is the point of keeping the selectors local.
+ * Everything here survives a restart: the counts are SQL aggregates and the
+ * list is a paged query, so the dashboard stays honest as the table grows
+ * instead of reflecting only what happened since the app was opened.
  */
 export function DashboardView(): React.JSX.Element {
-  const recentAnalyses = useAppStore((s) => s.recentAnalyses);
+  const queryClient = useQueryClient();
   const setActiveView = useAppStore((s) => s.setActiveView);
 
-  const appInfo = useQuery({
-    queryKey: ['app-info'],
-    queryFn: () => invoke('app:info', null),
-    staleTime: Infinity,
+  const stats = useQuery({ queryKey: STATS_KEY, queryFn: () => invoke('history:stats', null) });
+  const entries = useQuery({
+    queryKey: HISTORY_KEY,
+    queryFn: () => invoke('history:list', { limit: 50, offset: 0 }),
   });
 
-  const rareCount = recentAnalyses.filter((a) => a.item.rarity === 'Rare').length;
-  // Both signals mean the same thing to the user: the parser mis-read an item.
-  const withIssues = recentAnalyses.filter(
-    (a) => a.item.unparsedLines.length > 0 || exceedsAffixBudget(a.item),
-  ).length;
-  const bestScore = recentAnalyses.reduce((best, a) => Math.max(best, a.deterministic.score), 0);
+  const refresh = (): void => {
+    void queryClient.invalidateQueries({ queryKey: HISTORY_KEY });
+    void queryClient.invalidateQueries({ queryKey: STATS_KEY });
+  };
+
+  const remove = useMutation({
+    mutationFn: (id: number) => invoke('history:remove', { id }),
+    onSuccess: refresh,
+  });
+  const clear = useMutation({
+    mutationFn: () => invoke('history:clear', null),
+    onSuccess: refresh,
+  });
+
+  if (!stats.data || !entries.data) {
+    return (
+      <div className="grid h-full place-items-center text-ink-dim">
+        <Loader2 size={18} className="animate-spin" />
+      </div>
+    );
+  }
+
+  const { total, rares, bestScore, averageScore, withParseWarnings, narrated } = stats.data;
 
   return (
     <div className="flex flex-col gap-5">
       <div>
         <h1 className="text-[15px] font-semibold">Dashboard</h1>
         <p className="mt-1 text-[12px] text-ink-muted">
-          Session overview. Persistent history, profit tracking and craft counters arrive with the
-          SQLite layer.
+          Everything you have analysed, stored locally and kept between sessions.
         </p>
       </div>
 
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-3">
-        <Metric label="Items analysed" value={String(recentAnalyses.length)} hint="this session" />
-        <Metric label="Rares" value={String(rareCount)} />
-        <Metric
-          label="Best score"
-          value={recentAnalyses.length === 0 ? '—' : String(bestScore)}
-          hint="out of 100"
-        />
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(170px,1fr))] gap-3">
+        <Metric label="Items analysed" value={String(total)} hint="all time" />
+        <Metric label="Rares" value={String(rares)} />
+        <Metric label="Best score" value={total === 0 ? '—' : String(bestScore)} hint="out of 100" />
+        <Metric label="Average" value={total === 0 ? '—' : String(averageScore)} />
+        <Metric label="Explained by AI" value={String(narrated)} />
         <Metric
           label="Parse warnings"
-          value={String(withIssues)}
-          hint={withIssues > 0 ? 'unattributed lines found' : 'clean'}
-        />
-        <Metric
-          label="Electron"
-          value={appInfo.data?.electron ?? '—'}
-          hint={appInfo.data?.platform}
+          value={String(withParseWarnings)}
+          hint={withParseWarnings > 0 ? 'unattributed lines found' : 'clean'}
         />
       </div>
 
       <section className="rounded-lg border border-line bg-surface">
-        <header className="border-b border-line px-4 py-3 text-[12px] font-medium">
-          Recently analysed
+        <header className="flex items-center justify-between border-b border-line px-4 py-3">
+          <span className="text-[12px] font-medium">History</span>
+          {total > 0 && (
+            <button
+              type="button"
+              onClick={() => clear.mutate()}
+              className="flex items-center gap-1.5 text-[11px] text-ink-dim transition-colors hover:text-red-300"
+            >
+              <Trash2 size={12} />
+              Clear all
+            </button>
+          )}
         </header>
-        {recentAnalyses.length === 0 ? (
+
+        {entries.data.length === 0 ? (
           <div className="px-4 py-8 text-center text-[13px] text-ink-dim">
             Nothing yet —{' '}
             <button
@@ -95,11 +123,30 @@ export function DashboardView(): React.JSX.Element {
           </div>
         ) : (
           <ul className="divide-y divide-line">
-            {recentAnalyses.map(({ item, deterministic }, i) => (
-              <li key={i} className="flex items-center justify-between px-4 py-2.5 text-[13px]">
-                <span className="truncate">{item.name ?? item.baseType}</span>
-                <span className="ml-4 shrink-0 font-mono text-[11px] text-ink-dim">
-                  {item.rarity} · {affixMods(item).length} affixes · score {deterministic.score}
+            {entries.data.map((entry) => (
+              <li
+                key={entry.id}
+                className="group flex items-center justify-between gap-3 px-4 py-2.5 text-[13px]"
+              >
+                <span className="flex min-w-0 items-center gap-2">
+                  <span className={`truncate ${RARITY_TEXT[entry.rarity] ?? 'text-ink'}`}>
+                    {entry.name}
+                  </span>
+                  {entry.narrative && <Sparkles size={11} className="shrink-0 text-accent" />}
+                </span>
+
+                <span className="flex shrink-0 items-center gap-3 font-mono text-[11px] text-ink-dim">
+                  <span>{entry.affixCount} affixes</span>
+                  <span className="text-ink-muted">score {entry.score}</span>
+                  <span>{new Date(entry.capturedAt).toLocaleDateString()}</span>
+                  <button
+                    type="button"
+                    onClick={() => remove.mutate(entry.id)}
+                    className="opacity-0 transition-opacity group-hover:opacity-100 hover:text-red-300"
+                    title="Remove"
+                  >
+                    <Trash2 size={12} />
+                  </button>
                 </span>
               </li>
             ))}

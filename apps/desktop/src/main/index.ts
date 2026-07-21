@@ -6,7 +6,8 @@ import { unmatchedMods } from '@poe2/data';
 import { analyzeText } from './analysis/pipeline.js';
 import { createAiDebugLogger } from './analysis/aiDebug.js';
 import { registerIpcHandlers } from './ipc/registry.js';
-import { createHandlers } from './ipc/handlers.js';
+import { createHandlers, recordAnalysis } from './ipc/handlers.js';
+import { SqliteHistoryRepository } from './history/sqlite.js';
 import { ClipboardWatcher } from './clipboard/watcher.js';
 import { SettingsStore } from './settings/store.js';
 import type { IpcEventPayload } from '../shared/ipc.js';
@@ -72,6 +73,9 @@ function createMainWindow(): BrowserWindow {
   return window;
 }
 
+/** Set once the app is ready; the clipboard watcher starts before that. */
+let captureHistory: SqliteHistoryRepository | null = null;
+
 /** Pushes an event to every open window. */
 function broadcast<E extends 'item:captured'>(event: E, payload: IpcEventPayload<E>): void {
   for (const window of BrowserWindow.getAllWindows()) {
@@ -92,7 +96,11 @@ const watcher = new ClipboardWatcher({
   readText: () => clipboard.readText(),
   isRelevant: looksLikeItem,
   onCapture: (raw) => {
-    const result = analyzeText(raw);
+    // The watcher outlives `whenReady`, so the repository is reached through a
+    // binding set at startup rather than captured at module scope.
+    const result = captureHistory
+      ? recordAnalysis(captureHistory, analyzeText(raw))
+      : analyzeText(raw);
     if (!result.ok) return;
 
     if (isDev) {
@@ -142,9 +150,12 @@ if (!app.requestSingleInstanceLock()) {
       safeStorage,
     );
 
+    const history = new SqliteHistoryRepository(join(app.getPath('userData'), 'history.db'));
+
     registerIpcHandlers(
-      createHandlers({ watcher, settings, aiDebug: createAiDebugLogger(isDev) }),
+      createHandlers({ watcher, settings, history, aiDebug: createAiDebugLogger(isDev) }),
     );
+    captureHistory = history;
     createMainWindow();
     watcher.setEnabled(settings.settings.clipboardWatch);
 

@@ -1,4 +1,9 @@
-import { ItemAnalysisSchema, NarrativeAnalysisSchema } from '@poe2/models';
+import {
+  HistoryEntrySchema,
+  HistoryStatsSchema,
+  ItemAnalysisSchema,
+  NarrativeAnalysisSchema,
+} from '@poe2/models';
 import { z } from 'zod';
 import { SettingsPatchSchema, SettingsViewSchema } from './settings.js';
 import type { IpcChannel, IpcEvent } from './channels.js';
@@ -107,6 +112,14 @@ export const ipcContract = {
    * critically, surfaces the provider's own error text in the interface rather
    * than only in the terminal.
    */
+  'history:list': {
+    request: z.object({ limit: z.number().int().positive().max(200), offset: z.number().int().min(0) }),
+    response: z.array(HistoryEntrySchema),
+  },
+  'history:stats': { request: z.null(), response: HistoryStatsSchema },
+  'history:remove': { request: z.object({ id: z.number().int().positive() }), response: z.null() },
+  'history:clear': { request: z.null(), response: z.null() },
+
   'ai:test': {
     request: z.null(),
     response: resultSchema(

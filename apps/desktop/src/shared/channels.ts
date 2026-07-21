@@ -21,6 +21,10 @@ export const IPC_CHANNELS = [
   'settings:update',
   'ai:narrate',
   'ai:test',
+  'history:list',
+  'history:stats',
+  'history:remove',
+  'history:clear',
 ] as const;
 
 /** Main → renderer, fire-and-forget. */
