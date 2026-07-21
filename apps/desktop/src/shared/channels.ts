@@ -23,6 +23,7 @@ export const IPC_CHANNELS = [
   'ai:test',
   'history:list',
   'history:stats',
+  'history:update',
   'history:remove',
   'history:clear',
   'craft:pool',

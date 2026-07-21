@@ -1,3 +1,7 @@
+import { mkdtempSync, rmSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
+import { tmpdir } from 'node:os';
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { ItemAnalysis, ParsedItem } from '@poe2/models';
 import { defaultKnowledgeBase, enrichItem } from '@poe2/data';
@@ -177,10 +181,91 @@ describe('history repository', () => {
     expect(repo.stats().total).toBe(0);
   });
 
+  it('records a sale and reads it back', () => {
+    const saved = repo.save(analysisFor(GOOD));
+    const updated = repo.update(saved.id, { soldFor: 2, soldCurrency: 'Divine Orb' });
+
+    expect(updated?.soldFor).toBe(2);
+    expect(updated?.soldCurrency).toBe('Divine Orb');
+  });
+
+  it('distinguishes clearing a sale from not mentioning it', () => {
+    const saved = repo.save(analysisFor(GOOD));
+    repo.update(saved.id, { soldFor: 2, soldCurrency: 'Divine Orb' });
+
+    // An absent field leaves the value alone…
+    repo.update(saved.id, { notes: 'traded in bulk' });
+    expect(repo.find(saved.id)?.soldFor).toBe(2);
+
+    // …while null clears it.
+    repo.update(saved.id, { soldFor: null, soldCurrency: null });
+    expect(repo.find(saved.id)?.soldFor).toBeNull();
+    expect(repo.find(saved.id)?.notes).toBe('traded in bulk');
+  });
+
+  it('converts earnings through the supplied rates', () => {
+    const first = repo.save(analysisFor(GOOD));
+    const second = repo.save(analysisFor(NORMAL));
+    repo.update(first.id, { soldFor: 2, soldCurrency: 'Divine Orb' });
+    repo.update(second.id, { soldFor: 50, soldCurrency: 'Exalted Orb' });
+
+    const stats = repo.stats({ 'Divine Orb': 700 });
+    expect(stats.sold).toBe(2);
+    expect(stats.earned).toBe(1450); // 2 * 700 + 50 * 1
+    expect(stats.unpricedSales).toBe(0);
+  });
+
+  it('excludes a sale in an unpriced currency instead of counting it as zero', () => {
+    const saved = repo.save(analysisFor(GOOD));
+    repo.update(saved.id, { soldFor: 3, soldCurrency: 'Mirror of Kalandra' });
+
+    // Treating it as zero would understate earnings and hide the gap.
+    const stats = repo.stats({});
+    expect(stats.earned).toBe(0);
+    expect(stats.unpricedSales).toBe(1);
+    expect(stats.sold).toBe(1);
+  });
+
   it('reopens an existing database without re-running the migration', () => {
     // Migrations must be idempotent; a second open must not wipe or duplicate.
     const second = new SqliteHistoryRepository(':memory:');
     expect(second.list(10)).toEqual([]);
     second.close();
+  });
+
+  it('migrates a version 1 database without losing its rows', () => {
+    // The real upgrade path: a file written before sales existed must open,
+    // keep every row, and gain the new columns as null.
+    const file = join(mkdtempSync(join(tmpdir(), 'poe2-history-')), 'history.db');
+
+    const v1 = new DatabaseSync(file);
+    v1.exec(`
+      CREATE TABLE analyses (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        captured_at TEXT NOT NULL, name TEXT NOT NULL, base_type TEXT NOT NULL,
+        rarity TEXT NOT NULL, item_level INTEGER, score INTEGER NOT NULL,
+        affix_count INTEGER NOT NULL, unparsed_count INTEGER NOT NULL DEFAULT 0,
+        raw TEXT NOT NULL, narrative TEXT, notes TEXT
+      );
+      PRAGMA user_version = 1;
+    `);
+    v1.prepare(
+      `INSERT INTO analyses
+         (captured_at, name, base_type, rarity, item_level, score, affix_count, unparsed_count, raw)
+       VALUES ('2026-01-01T00:00:00.000Z','Old Item','Vaal Gauntlets','Rare',70,55,2,0,'old raw')`,
+    ).run();
+    v1.close();
+
+    const migrated = new SqliteHistoryRepository(file);
+    const [entry] = migrated.list(10);
+
+    expect(entry?.name).toBe('Old Item');
+    expect(entry?.soldFor).toBeNull();
+    // And the new column is usable straight away.
+    migrated.update(entry?.id ?? 0, { soldFor: 5, soldCurrency: 'Exalted Orb' });
+    expect(migrated.find(entry?.id ?? 0)?.soldFor).toBe(5);
+    migrated.close();
+
+    rmSync(dirname(file), { recursive: true, force: true });
   });
 });

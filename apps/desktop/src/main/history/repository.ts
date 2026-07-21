@@ -12,11 +12,13 @@ export interface HistoryRepository {
   save(analysis: ItemAnalysis): HistoryEntry;
   /** Attaches a narrative to an entry already stored. */
   attachNarrative(id: number, narrative: unknown): void;
+  /** Records notes or a sale against an existing entry. */
+  update(id: number, patch: HistoryPatch): HistoryEntry | null;
   list(limit: number, offset?: number): HistoryEntry[];
   find(id: number): HistoryEntry | null;
   /** Most recent entry with this exact item text, if any. */
   findByRaw(raw: string): HistoryEntry | null;
-  stats(): HistoryStats;
+  stats(rates?: Record<string, number>): HistoryStats;
   remove(id: number): void;
   clear(): void;
 }
@@ -35,6 +37,22 @@ export interface HistoryRow {
   raw: string;
   narrative: string | null;
   notes: string | null;
+  sold_amount: number | null;
+  sold_currency: string | null;
+}
+
+/**
+ * What the player can edit on a stored entry after the fact.
+ *
+ * Three states per field, and all three are meaningful: absent leaves it alone,
+ * `null` clears it, a value sets it. The explicit `| undefined` is what
+ * `exactOptionalPropertyTypes` needs to let a caller pass an absent field
+ * through from a parsed IPC payload.
+ */
+export interface HistoryPatch {
+  readonly notes?: string | null | undefined;
+  readonly soldFor?: number | null | undefined;
+  readonly soldCurrency?: string | null | undefined;
 }
 
 /**
@@ -70,6 +88,8 @@ export function rowToEntry(row: HistoryRow): HistoryEntry {
     raw: row.raw,
     narrative,
     notes: row.notes,
+    soldFor: row.sold_amount,
+    soldCurrency: row.sold_currency,
   };
 }
 
@@ -89,5 +109,7 @@ export function analysisToRow(analysis: ItemAnalysis): Omit<HistoryRow, 'id'> {
     raw: item.raw,
     narrative: narrative === null ? null : JSON.stringify(narrative),
     notes: null,
+    sold_amount: null,
+    sold_currency: null,
   };
 }

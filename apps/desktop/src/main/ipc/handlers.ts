@@ -178,7 +178,8 @@ export const createHandlers = ({
   },
 
   'history:list': ({ limit, offset }) => history.list(limit, offset),
-  'history:stats': () => history.stats(),
+  'history:stats': () => history.stats(settings.settings.currencyPrices),
+  'history:update': ({ id, ...patch }) => history.update(id, patch),
   'history:remove': ({ id }) => {
     history.remove(id);
     return null;

@@ -149,6 +149,16 @@ export const HistoryEntrySchema = z.object({
   raw: z.string(),
   narrative: NarrativeAnalysisSchema.nullable(),
   notes: z.string().nullable(),
+  /**
+   * What the item actually sold for, recorded by the player.
+   *
+   * The only trustworthy price data this app has: no public feed serves PoE2
+   * item prices, so what a real buyer paid beats any estimate. Null means "not
+   * sold", never "worthless".
+   */
+  soldFor: z.number().positive().nullable(),
+  /** Currency of `soldFor`, as the player named it. */
+  soldCurrency: z.string().nullable(),
 });
 export type HistoryEntry = z.infer<typeof HistoryEntrySchema>;
 
@@ -160,6 +170,15 @@ export const HistoryStatsSchema = z.object({
   withParseWarnings: z.number().int(),
   narrated: z.number().int(),
   firstCapturedAt: z.string().nullable(),
+  /** How many entries have a recorded sale. */
+  sold: z.number().int(),
+  /**
+   * Everything sold, converted to the reference currency where a rate exists.
+   * Sales in currencies with no configured rate are excluded and counted in
+   * `unpricedSales` rather than being treated as zero.
+   */
+  earned: z.number(),
+  unpricedSales: z.number().int(),
 });
 export type HistoryStats = z.infer<typeof HistoryStatsSchema>;
 

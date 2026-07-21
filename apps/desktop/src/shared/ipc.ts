@@ -129,6 +129,21 @@ export const ipcContract = {
     response: z.array(HistoryEntrySchema),
   },
   'history:stats': { request: z.null(), response: HistoryStatsSchema },
+  /**
+   * Records notes or a sale on a stored entry.
+   *
+   * `null` clears a field and an absent field leaves it alone: clearing a
+   * recorded sale is a real action and must not look like silence.
+   */
+  'history:update': {
+    request: z.object({
+      id: z.number().int().positive(),
+      notes: z.string().nullable().optional(),
+      soldFor: z.number().positive().nullable().optional(),
+      soldCurrency: z.string().nullable().optional(),
+    }),
+    response: HistoryEntrySchema.nullable(),
+  },
   'history:remove': { request: z.object({ id: z.number().int().positive() }), response: z.null() },
   'history:clear': { request: z.null(), response: z.null() },
 

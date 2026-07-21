@@ -7,6 +7,8 @@ import { TitleBar } from '@/components/TitleBar';
 import { AnalyzerView } from '@/features/analyzer/AnalyzerView';
 import { BuildAdvisorView } from '@/features/build/BuildAdvisorView';
 import { CraftAdvisorView } from '@/features/craft/CraftAdvisorView';
+import { CurrencyCalculatorView } from '@/features/currency/CurrencyCalculatorView';
+import { PriceCheckView } from '@/features/price/PriceCheckView';
 import { DashboardView } from '@/features/dashboard/DashboardView';
 import { SettingsView } from '@/features/settings/SettingsView';
 
@@ -30,6 +32,10 @@ function ActiveView(): React.JSX.Element {
       return <BuildAdvisorView />;
     case 'craft':
       return <CraftAdvisorView />;
+    case 'price':
+      return <PriceCheckView />;
+    case 'currency':
+      return <CurrencyCalculatorView />;
     case 'settings':
       return <SettingsView />;
     default: {
