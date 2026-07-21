@@ -1,5 +1,6 @@
 import type { ItemMod, ModCategory } from '@poe2/models';
-import { normalizeStat, slugifyTemplate } from '@poe2/shared';
+import { normalizeStat, slugifyTemplate, stripRollRanges } from '@poe2/shared';
+import type { ModifierHeader } from './advanced.js';
 
 /**
  * Suffix tags the client appends to a modifier line. `augmented` is excluded on
@@ -43,25 +44,47 @@ export function stripTag(line: string): StrippedLine {
 }
 
 /**
- * Builds a structured modifier from a single line.
+ * Builds a structured modifier from one or more lines.
  *
- * The result is intentionally "unenriched": `affixType` is `unknown` and `tier`
- * is `null`. Resolving those requires the mod database and happens in a
- * separate pass (`@poe2/data`), which keeps this function pure, synchronous and
- * comfortably inside the 20ms parsing budget.
+ * @param lines The statistic text. More than one when a single modifier grants
+ *   several statistics — the client prints them under one header.
+ * @param header Present only with Advanced Item Description enabled. When it is
+ *   there, everything it states (affix type, tier, name, tags) is authoritative
+ *   and nothing is inferred.
+ *
+ * Without a header the result is deliberately "unenriched": `affixType` is
+ * `unknown` and `tier` is `null`, both resolved later by `@poe2/data`. That
+ * keeps this function pure, synchronous and inside the 20 ms budget.
  */
-export function parseModLine(line: string, defaultCategory: ModCategory = 'explicit'): ItemMod {
-  const { text, category } = stripTag(line);
+export function parseModLine(
+  lines: string | string[],
+  defaultCategory: ModCategory = 'explicit',
+  header?: ModifierHeader | null,
+): ItemMod {
+  const joined = (Array.isArray(lines) ? lines : [lines]).join('\n');
+  const { text: tagless, category } = stripTag(joined);
+
+  // The client's `(min-max)` annotations must come out before the statistic is
+  // normalised, or the window's digits are read as part of the statistic.
+  const { text, ranges } = stripRollRanges(tagless);
   const { template, values } = normalizeStat(text);
 
   return {
     statId: slugifyTemplate(template),
-    category: category ?? defaultCategory,
-    affixType: 'unknown',
+    category: header?.category ?? category ?? defaultCategory,
+    affixType: header?.affixType ?? 'unknown',
+    affixName: header?.name ?? null,
+    tags: header?.tags ?? [],
+    valueRanges: ranges,
     text,
     template,
     values,
-    tier: null,
+    // Stated by the client, so it is fact rather than inference. `total` still
+    // needs the modifier table — the client says "Tier: 3", never "of 8".
+    tier:
+      header?.tier == null
+        ? null
+        : { value: header.tier, total: null, name: header.name, confidence: 'exact' },
     matched: false,
   };
 }

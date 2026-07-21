@@ -13,6 +13,7 @@ const CONTEXT: AnalysisContext = {
   ascendancy: 'Gemling Legionnaire',
   mainSkill: 'Explosive Shot',
   goal: null,
+  craftIntent: 'I want the highest DPS I can get for as little currency as possible.',
 };
 
 const RAW = `Item Class: Gloves
@@ -61,6 +62,7 @@ function fakeMessages(message: Partial<Anthropic.Message>): MessagesClient & { c
 const VALID_BODY = JSON.stringify({
   summary: 'A solid life-and-resistance base with room to grow.',
   craftRecommendation: 'Exalt it — four slots are open and nothing good is at risk.',
+  steps: ['Use an Exalted Orb.', 'Stop once a third useful affix lands.'],
   possibleUpgrades: ['Higher life tier', 'A second resistance'],
   nextBestAction: 'Use an Exalted Orb.',
 });
@@ -104,6 +106,24 @@ Totally Not A Real Modifier
     const prompt = buildCraftPrompt(requestFor(RAW));
     expect(prompt).toContain('Gemling Legionnaire');
     expect(prompt).toContain('unknown'); // `goal` is null
+  });
+
+  it("carries the player's intent for this item into the prompt", () => {
+    const prompt = buildCraftPrompt(requestFor(RAW));
+    expect(prompt).toContain('as little currency as possible');
+  });
+
+  it('tells the model to declare its assumption when no intent was given', () => {
+    const base = requestFor(RAW);
+    const prompt = buildCraftPrompt({
+      ...base,
+      context: { ...base.context, craftIntent: null },
+    });
+
+    // Silently assuming a goal would produce a confident plan for something the
+    // player never asked for.
+    expect(prompt).toMatch(/did not say/i);
+    expect(prompt).toMatch(/note that you assumed/i);
   });
 
   it('appends custom instructions below the hard rules, never above', () => {

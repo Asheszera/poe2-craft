@@ -13,6 +13,7 @@
  * offline, deterministic and complete on their own.
  */
 export type {
+  AIDebugEvent,
   AIProvider,
   AIUsage,
   EmbeddingProvider,
@@ -20,6 +21,11 @@ export type {
   NarrativeResponse,
   ProviderConfig,
 } from './types.js';
-export { buildCraftPrompt, buildSystemPrompt, render } from './prompts.js';
+export { buildCraftPrompt, buildJsonSystemPrompt, buildSystemPrompt, render } from './prompts.js';
 export { AnthropicProvider, type MessagesClient } from './providers/anthropic.js';
-export { AVAILABLE_PROVIDERS, createProvider } from './registry.js';
+export {
+  extractJson,
+  OpenAICompatibleProvider,
+  type OpenAICompatibleOptions,
+} from './providers/openaiCompatible.js';
+export { createProvider, presetFor, PROVIDER_PRESETS, type ProviderPreset } from './registry.js';

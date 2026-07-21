@@ -116,6 +116,26 @@ const HANDLERS: Readonly<Record<string, Handler>> = {
     if (current !== undefined && max !== undefined) d.properties.stackSize = { current, max };
   },
 
+  /**
+   * The single-line form: `Requires: Level 45, 56 Int`.
+   *
+   * The client uses this instead of a `Requirements:` block on some items, and
+   * the attribute order is not fixed — so each part is matched by its name
+   * rather than by position.
+   */
+  requires: (d, v) => {
+    for (const part of v.split(',')) {
+      const text = part.trim();
+      const amount = int(text);
+      if (amount === null) continue;
+
+      if (/level/i.test(text)) d.requirements.level = amount;
+      else if (/str/i.test(text)) d.requirements.strength = amount;
+      else if (/dex/i.test(text)) d.requirements.dexterity = amount;
+      else if (/int/i.test(text)) d.requirements.intelligence = amount;
+    }
+  },
+
   'item level': (d, v) => (d.itemLevel = int(v)),
   sockets: (d, v) => (d.sockets = (v.match(/S/gi) ?? []).length),
   note: (d, v) => (d.note = v),

@@ -89,8 +89,34 @@ export const ipcContract = {
    * analysis from the renderer would let it dictate what the model "explains".
    */
   'ai:narrate': {
-    request: z.object({ raw: z.string() }),
+    request: z.object({
+      raw: z.string(),
+      /**
+       * What the player wants from this item. Renderer-supplied, unlike the
+       * analysis: it is the user stating a preference, not dictating a finding.
+       * It reaches the model as context, below the system prompt's hard rules.
+       */
+      craftIntent: z.string().nullable(),
+    }),
     response: resultSchema(NarrativeAnalysisSchema),
+  },
+
+  /**
+   * Sends a fixed, minimal item through the whole AI path so the current
+   * provider settings can be verified without needing a real item — and,
+   * critically, surfaces the provider's own error text in the interface rather
+   * than only in the terminal.
+   */
+  'ai:test': {
+    request: z.null(),
+    response: resultSchema(
+      z.object({
+        provider: z.string(),
+        model: z.string(),
+        elapsedMs: z.number(),
+        sample: z.string(),
+      }),
+    ),
   },
 } as const satisfies Record<IpcChannel, { request: z.ZodTypeAny; response: z.ZodTypeAny }>;
 

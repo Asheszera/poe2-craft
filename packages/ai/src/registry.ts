@@ -1,29 +1,43 @@
 import { appError, err, ok, type Result } from '@poe2/shared';
+import { presetFor, PROVIDER_PRESETS } from './presets.js';
 import { AnthropicProvider } from './providers/anthropic.js';
+import { OpenAICompatibleProvider } from './providers/openaiCompatible.js';
 import type { AIProvider, ProviderConfig } from './types.js';
 
 /**
- * Providers the application can construct, keyed by the id stored in settings.
+ * Builds a provider from its id.
  *
- * A factory map rather than a `switch`: adding Ollama, LM Studio, OpenRouter or
- * any OpenAI-compatible endpoint is one entry here plus one file under
- * `providers/`, and nothing else in the codebase learns about it. The rest of
- * the app only ever holds an `AIProvider`.
+ * Only Anthropic has a bespoke adapter — its API shape and its structured-output
+ * parameter are its own. Everything else is the OpenAI-compatible dialect, so a
+ * new provider is a row in `presets.ts` and nothing more. The rest of the
+ * application only ever holds an `AIProvider`.
  */
-const FACTORIES: Readonly<Record<string, (config: ProviderConfig) => AIProvider>> = {
-  anthropic: (config) => new AnthropicProvider(config),
-};
-
-export const AVAILABLE_PROVIDERS = Object.keys(FACTORIES);
-
 export function createProvider(id: string, config: ProviderConfig): Result<AIProvider> {
-  const factory = FACTORIES[id];
-  if (!factory) {
+  const preset = presetFor(id);
+  if (!preset) {
     return err(
       appError('AI_NOT_CONFIGURED', `Unknown AI provider "${id}".`, {
-        details: { available: AVAILABLE_PROVIDERS },
+        details: { available: PROVIDER_PRESETS.map((p) => p.id) },
       }),
     );
   }
-  return ok(factory(config));
+
+  if (preset.baseUrl === null) {
+    return ok(new AnthropicProvider({ ...config, model: config.model || preset.defaultModel }));
+  }
+
+  return ok(
+    new OpenAICompatibleProvider(
+      {
+        id: preset.id,
+        baseUrl: config.baseUrl?.trim() || preset.baseUrl,
+        defaultModel: preset.defaultModel,
+        requiresKey: preset.requiresKey,
+        supportsJsonMode: preset.supportsJsonMode,
+      },
+      config,
+    ),
+  );
 }
+
+export { PROVIDER_PRESETS, presetFor, type ProviderPreset } from './presets.js';

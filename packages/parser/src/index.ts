@@ -10,4 +10,5 @@
  */
 export { parseItem, looksLikeItem } from './parseItem.js';
 export { parseModLine, stripTag } from './mods.js';
+export { isModifierHeader, parseModifierHeader, type ModifierHeader } from './advanced.js';
 export { splitBlocks, splitKeyValue } from './blocks.js';

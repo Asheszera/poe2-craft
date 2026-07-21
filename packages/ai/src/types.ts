@@ -57,9 +57,27 @@ export interface EmbeddingProvider {
   embed(texts: readonly string[]): Promise<Result<number[][]>>;
 }
 
+/**
+ * A trace point in a provider call.
+ *
+ * Providers differ in which fields they accept, and the only way to find out is
+ * to read what actually went over the wire and what came back. Secrets are
+ * never included — the key is redacted at the source, not at the sink.
+ */
+export interface AIDebugEvent {
+  readonly provider: string;
+  readonly model: string;
+  readonly phase: 'request' | 'response' | 'error';
+  readonly detail: Readonly<Record<string, unknown>>;
+}
+
 export interface ProviderConfig {
   readonly apiKey: string;
+  /** Optional trace sink. Wired to the terminal in development. */
+  readonly debug?: ((event: AIDebugEvent) => void) | undefined;
   readonly model?: string;
+  /** Overrides the preset endpoint — for self-hosted or proxied deployments. */
+  readonly baseUrl?: string;
   /**
    * Thinking depth / token spend. `low` keeps the narrative fast, which is
    * what layer 2 wants; raise it for the Build Advisor's longer reasoning.

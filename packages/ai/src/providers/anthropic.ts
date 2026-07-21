@@ -22,10 +22,11 @@ const NARRATIVE_SCHEMA = {
   properties: {
     summary: { type: 'string' },
     craftRecommendation: { type: 'string' },
+    steps: { type: 'array', items: { type: 'string' } },
     possibleUpgrades: { type: 'array', items: { type: 'string' } },
     nextBestAction: { type: 'string' },
   },
-  required: ['summary', 'craftRecommendation', 'possibleUpgrades', 'nextBestAction'],
+  required: ['summary', 'craftRecommendation', 'steps', 'possibleUpgrades', 'nextBestAction'],
   additionalProperties: false,
 } as const;
 

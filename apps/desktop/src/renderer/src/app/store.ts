@@ -36,6 +36,26 @@ interface AppState {
 
   recentAnalyses: ItemAnalysis[];
   clearRecentAnalyses: () => void;
+
+  /**
+   * What the player wants from the item currently on screen.
+   *
+   * Kept at session scope, not per item: while playing you are usually doing
+   * the same thing to a run of similar items, and retyping the intent for each
+   * capture would be friction exactly where the app is meant to be fast.
+   */
+  craftIntent: string;
+  setCraftIntent: (intent: string) => void;
+
+  /**
+   * Raw text in the Analyzer's paste box.
+   *
+   * Lives here rather than in the component because switching views unmounts
+   * it, and losing what you pasted just because you glanced at the Dashboard is
+   * indefensible.
+   */
+  pasteBuffer: string;
+  setPasteBuffer: (raw: string) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -48,6 +68,11 @@ export const useAppStore = create<AppState>((set) => ({
     set((state) => ({
       currentAnalysis: analysis,
       currentError: null,
+      // The paste box always shows the item on screen, whichever route brought
+      // it in. Doing this here rather than at each call site means a future
+      // third route cannot forget to, and after a background capture the text
+      // is right there to tweak and re-parse.
+      pasteBuffer: analysis.item.raw,
       recentAnalyses: [analysis, ...state.recentAnalyses].slice(0, MAX_RECENT),
     })),
   setCurrentError: (error) => set({ currentError: error, currentAnalysis: null }),
@@ -63,4 +88,10 @@ export const useAppStore = create<AppState>((set) => ({
 
   recentAnalyses: [],
   clearRecentAnalyses: () => set({ recentAnalyses: [] }),
+
+  craftIntent: '',
+  setCraftIntent: (craftIntent) => set({ craftIntent }),
+
+  pasteBuffer: '',
+  setPasteBuffer: (pasteBuffer) => set({ pasteBuffer }),
 }));

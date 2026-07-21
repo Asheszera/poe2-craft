@@ -37,10 +37,23 @@ export function enrichMod(
   // Runes, implicits and enchantments are intrinsic (ADR-002 addendum).
   if (!isAffixMod(mod)) return enriched;
 
+  // The client already said so (Advanced Item Description). Inference must not
+  // second-guess the game: all that is missing is how many tiers exist above.
+  if (mod.tier?.confidence === 'exact') {
+    if (mod.tier.total !== null) return enriched;
+    const total = context.mods.ladderSize(mod.template, mod.affixType);
+    return total === null ? enriched : { ...enriched, tier: { ...mod.tier, total } };
+  }
+
   const resolution = context.mods.resolve(mod.template, mod.values, itemLevel);
   if (!resolution) return enriched;
 
-  return { ...enriched, affixType: resolution.affixType, tier: resolution.tier };
+  return {
+    ...enriched,
+    // A stated affix type outranks an inferred one, for the same reason.
+    affixType: mod.affixType === 'unknown' ? resolution.affixType : mod.affixType,
+    tier: resolution.tier,
+  };
 }
 
 export function enrichItem(item: ParsedItem, context: EnrichmentContext): ParsedItem {

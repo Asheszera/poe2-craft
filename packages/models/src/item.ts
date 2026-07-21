@@ -58,11 +58,29 @@ export const ModTierSchema = z.object({
 });
 export type ModTier = z.infer<typeof ModTierSchema>;
 
+export const RolledRangeSchema = z.object({
+  value: z.number(),
+  min: z.number(),
+  max: z.number(),
+});
+
 export const ItemModSchema = z.object({
   /** Canonical GGG stat id when matched, otherwise a slug of the template. */
   statId: z.string().min(1),
   category: ModCategorySchema,
   affixType: AffixTypeSchema,
+  /**
+   * In-game affix name (`Opalescent`, `of Siphoning`), when the client states
+   * it. Only available with Advanced Item Description enabled.
+   */
+  affixName: z.string().nullable().default(null),
+  /** Modifier tags the client prints (`Mana`, `Attack`, `Elemental`). */
+  tags: z.array(z.string()).default([]),
+  /**
+   * The window each value could have rolled in, when the client states it.
+   * Turns "is this a good roll?" from a lookup into arithmetic.
+   */
+  valueRanges: z.array(RolledRangeSchema).default([]),
   /** Raw line as printed by the game, tags stripped. */
   text: z.string(),
   /** Numeric literals replaced by `#` — the mod-database lookup key. */

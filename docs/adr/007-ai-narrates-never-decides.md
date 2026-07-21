@@ -57,6 +57,35 @@ down, the user still gets the score and the advice — only the prose is missing
   tokens and the system prompt is far below it; a `cache_control` marker would
   be an inert decoration that looks like an optimisation.
 
+## Addendum — many providers, one adapter
+
+Nine providers are selectable, but there are only **two** adapters. Gemini,
+Groq, Cerebras, Mistral, OpenRouter, OpenAI, Ollama and LM Studio all speak the
+OpenAI `/chat/completions` dialect, so they share `OpenAICompatibleProvider` and
+differ only by rows in `presets.ts` — a base URL, a default model and a note.
+Adding another is a table entry, not code.
+
+That adapter is written against `fetch`, not the OpenAI SDK: the request and
+response shapes it uses are four fields wide and stable across all of them,
+while the SDK would add a dependency and its own opinions about base URLs and
+auth for no capability this needs.
+
+Two consequences worth naming:
+
+- **Only Anthropic can enforce the output schema.** Everywhere else the shape is
+  asked for in words (`prompts/json-output.md`) and the response is recovered
+  defensively — free and local models routinely wrap JSON in code fences or add
+  a sentence of preamble. `extractJson` unwraps both; zod still validates the
+  result, so a model that cannot hold the shape produces a clear error advising
+  a larger model rather than a corrupt narrative.
+- **Keys are stored per provider.** Switching from Gemini to Groq and back must
+  not discard either credential, so the store holds a `provider → ciphertext`
+  map rather than one key (ADR-008).
+
+The renderer imports the preset table from `@poe2/ai/presets`, a dependency-free
+subpath, so the provider list can be rendered without pulling a vendor SDK into
+the interface bundle.
+
 ## Model-version notes
 
 Written against Claude Opus 4.8, whose request surface differs from older

@@ -1,6 +1,7 @@
 import type { ItemMod, ParsedItem, Rarity } from '@poe2/models';
 import { RaritySchema } from '@poe2/models';
 import { appError, err, ok, type Result } from '@poe2/shared';
+import { parseModifierHeader, type ModifierHeader } from './advanced.js';
 import { splitBlocks, splitKeyValue } from './blocks.js';
 import { parseModLine } from './mods.js';
 import { applyPropertyLine, emptyDraft, isPropertyBlock } from './properties.js';
@@ -151,14 +152,41 @@ export function parseItem(raw: string): Result<ParsedItem> {
   // sharing a block with an implicit) so they are filtered here too.
   const mods: ItemMod[] = [];
   for (const block of modBlocks) {
+    // With Advanced Item Description a `{ … }` header owns every line until the
+    // next header, which is how a modifier granting several statistics stays
+    // one modifier instead of becoming three.
+    let header: ModifierHeader | null = null;
+    let pending: string[] = [];
+
+    const flush = (): void => {
+      if (pending.length === 0) return;
+      mods.push(header ? parseModLine(pending, 'explicit', header) : parseModLine(pending));
+      pending = [];
+    };
+
     for (const line of block) {
       if (isFlagLine(line)) {
         const flag = FLAG_LINES[line.trim().toLowerCase()];
         if (flag && flag !== 'ignore') flags[flag] = true;
         continue;
       }
-      mods.push(parseModLine(line));
+
+      const parsedHeader = parseModifierHeader(line);
+      if (parsedHeader) {
+        flush();
+        header = parsedHeader;
+        continue;
+      }
+
+      // Without headers every line is its own modifier, as before.
+      if (header === null) {
+        mods.push(parseModLine(line));
+        continue;
+      }
+      pending.push(line);
     }
+
+    flush();
   }
 
   if (mods.some((m) => m.category === 'fractured')) flags.fractured = true;

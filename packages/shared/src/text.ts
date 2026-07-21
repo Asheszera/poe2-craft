@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Text primitives shared by the parser and the knowledge-base tooling.
  *
  * The scraper in `@poe2/data` and the runtime parser MUST use the exact same
@@ -18,6 +18,39 @@ const NUMBER_RE = /(?<!\d)[+-]?\d+(?:\.\d+)?/g;
 /** Extracts every numeric literal from a line, in order of appearance. */
 export function extractNumbers(text: string): number[] {
   return Array.from(text.matchAll(NUMBER_RE), (m) => Number(m[0]));
+}
+
+/**
+ * A value the client annotated with the range it could have rolled in.
+ *
+ * Only present with Advanced Item Description enabled, where the game prints
+ * `+80(80-89) to maximum Mana` — the roll, then its window.
+ */
+export interface RolledValue {
+  readonly value: number;
+  readonly min: number;
+  readonly max: number;
+}
+
+/** `80(80-89)` — the roll followed by its window, in any of the dash forms. */
+const ROLLED_RE = /(-?\d+(?:\.\d+)?)\((-?\d+(?:\.\d+)?)\s*[-–—]\s*(-?\d+(?:\.\d+)?)\)/g;
+
+/**
+ * Separates rolled values from their ranges.
+ *
+ * `Adds 10(9-10) to 16(15-17) Cold damage` becomes
+ * `Adds 10 to 16 Cold damage` plus two ranges. Without this the range digits
+ * are read as part of the statistic and every value is wrong.
+ */
+export function stripRollRanges(text: string): { text: string; ranges: RolledValue[] } {
+  const ranges: RolledValue[] = [];
+
+  const stripped = text.replace(ROLLED_RE, (_match, value: string, min: string, max: string) => {
+    ranges.push({ value: Number(value), min: Number(min), max: Number(max) });
+    return value;
+  });
+
+  return { text: stripped, ranges };
 }
 
 export interface NormalizedStat {

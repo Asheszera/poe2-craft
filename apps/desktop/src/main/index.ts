@@ -4,6 +4,7 @@ import { looksLikeItem } from '@poe2/parser';
 import { affixBudget, affixMods, intrinsicMods } from '@poe2/models';
 import { unmatchedMods } from '@poe2/data';
 import { analyzeText } from './analysis/pipeline.js';
+import { createAiDebugLogger } from './analysis/aiDebug.js';
 import { registerIpcHandlers } from './ipc/registry.js';
 import { createHandlers } from './ipc/handlers.js';
 import { ClipboardWatcher } from './clipboard/watcher.js';
@@ -102,14 +103,16 @@ const watcher = new ClipboardWatcher({
       const tiers = affixes
         .map((m) => (m.tier ? `${m.affixType[0]?.toUpperCase()}T${m.tier.value}` : '—'))
         .join(' ');
+      // ASCII only: the Windows console is not UTF-8 by default, and a `·` or
+      // an arrow arrives as mojibake in the very output meant to aid debugging.
       console.log(
-        `[capture] ${item.rarity} · ${item.name ?? item.baseType} · ` +
-          `score ${deterministic.score} · ` +
-          `${affixes.length}${budget === null ? '' : `/${budget}`} affixes [${tiers}] · ` +
+        `[capture] ${item.rarity} | ${item.name ?? item.baseType} | ` +
+          `score ${deterministic.score} | ` +
+          `${affixes.length}${budget === null ? '' : `/${budget}`} affixes [${tiers}] | ` +
           `${intrinsicMods(item).length} intrinsic` +
-          (unknown > 0 ? ` · ${unknown} UNMATCHED` : '') +
-          ` · ${deterministic.timings['total'] ?? '?'}ms rules` +
-          ` → ${deterministic.recommendations[0]?.action ?? 'no advice'}`,
+          (unknown > 0 ? ` | ${unknown} UNMATCHED` : '') +
+          ` | ${deterministic.timings['total'] ?? '?'}ms rules` +
+          ` -> ${deterministic.recommendations[0]?.action ?? 'no advice'}`,
       );
     }
     broadcast('item:captured', result.value);
@@ -139,7 +142,9 @@ if (!app.requestSingleInstanceLock()) {
       safeStorage,
     );
 
-    registerIpcHandlers(createHandlers({ watcher, settings }));
+    registerIpcHandlers(
+      createHandlers({ watcher, settings, aiDebug: createAiDebugLogger(isDev) }),
+    );
     createMainWindow();
     watcher.setEnabled(settings.settings.clipboardWatch);
 

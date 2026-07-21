@@ -99,6 +99,27 @@ export class ModIndex {
     };
   }
 
+  /**
+   * How many tiers this modifier has, for a template the client already told us
+   * the tier of.
+   *
+   * With Advanced Item Description the game states "Tier: 3" but never "of 8",
+   * so the ladder size is the one piece still worth looking up — it is the
+   * difference between "T3" and "T3 of 8, so there is room above".
+   */
+  ladderSize(template: string, affixType: AffixType): number | null {
+    const candidates = this.#byKey.get(canonicalTemplate(template));
+    if (!candidates) return null;
+
+    const matching = candidates.filter(
+      (entry) => affixType === 'unknown' || entry.generationType === affixType,
+    );
+    const totals = new Set(matching.map((entry) => entry.tierTotal));
+    // Several distinct ladders share this text — reporting either one's size
+    // would be a guess.
+    return totals.size === 1 ? (matching[0]?.tierTotal ?? null) : null;
+  }
+
   /** Prefix/suffix is only asserted when every candidate agrees. */
   static #agreedAffixType(entries: readonly ModEntry[]): AffixType {
     const [first] = entries;

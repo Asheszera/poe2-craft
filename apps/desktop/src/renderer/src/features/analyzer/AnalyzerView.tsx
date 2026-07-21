@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { ClipboardPaste, Loader2, ScanSearch } from 'lucide-react';
 import { invoke } from '@/lib/ipc';
@@ -17,7 +16,8 @@ import { NarrativePanel } from './NarrativePanel';
  * care which one produced the item.
  */
 export function AnalyzerView(): React.JSX.Element {
-  const [raw, setRaw] = useState('');
+  const raw = useAppStore((s) => s.pasteBuffer);
+  const setRaw = useAppStore((s) => s.setPasteBuffer);
   const analysis = useAppStore((s) => s.currentAnalysis);
   const error = useAppStore((s) => s.currentError);
   const setCurrentAnalysis = useAppStore((s) => s.setCurrentAnalysis);
@@ -30,8 +30,8 @@ export function AnalyzerView(): React.JSX.Element {
         : invoke('item:parse', { raw: input.raw }),
     onSuccess: (result) => {
       if (result.ok) {
+        // The paste box is refreshed by the store — see `setCurrentAnalysis`.
         setCurrentAnalysis(result.value);
-        setRaw(result.value.item.raw);
       } else {
         setCurrentError(result.error);
       }

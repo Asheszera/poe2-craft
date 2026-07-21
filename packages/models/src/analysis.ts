@@ -56,6 +56,14 @@ export type DeterministicAnalysis = z.infer<typeof DeterministicAnalysisSchema>;
 export const NarrativeAnalysisSchema = z.object({
   summary: z.string(),
   craftRecommendation: z.string(),
+  /**
+   * Ordered crafting plan, one action per entry.
+   *
+   * Separate from `craftRecommendation` so a multi-step walkthrough renders as
+   * a numbered list rather than a wall of prose. Empty when the item needs no
+   * plan — corrupted, finished, or not worth continuing.
+   */
+  steps: z.array(z.string()).default([]),
   possibleUpgrades: z.array(z.string()),
   nextBestAction: z.string(),
   model: z.string(),
@@ -75,6 +83,15 @@ export const AnalysisContextSchema = z.object({
   characterClass: z.string().nullable(),
   ascendancy: z.string().nullable(),
   mainSkill: z.string().nullable(),
+  /** Build-level objective: what the character needs. Stable across items. */
   goal: z.string().nullable(),
+  /**
+   * Item-level objective: what the player wants from *this* item.
+   *
+   * Separate from `goal` because it changes the plan rather than the judgement.
+   * "Max DPS cheaply" and "best possible, cost no object" produce completely
+   * different step lists for the same base.
+   */
+  craftIntent: z.string().nullable(),
 });
 export type AnalysisContext = z.infer<typeof AnalysisContextSchema>;
