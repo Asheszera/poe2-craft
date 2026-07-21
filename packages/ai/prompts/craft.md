@@ -89,6 +89,10 @@ This list comes from the game's own data, not from memory. Plan with it:
 - If a method's exact behaviour in the current league is something you are not
   sure of, say so in that step instead of asserting it.
 
+## What things cost
+
+{{prices}}
+
 ## Player context
 
 - League: {{league}}
@@ -104,9 +108,31 @@ This list comes from the game's own data, not from memory. Plan with it:
 - `craftRecommendation`: explain the top-ranked recommendation in the player's
   terms — what it does to this specific item and what could go wrong. If the
   recommendation is to stop or sell, say why plainly instead of softening it.
-- `steps`: an ordered plan, one action per entry, starting from the item's
-  current state. Empty array when there is nothing to do — corrupted, finished,
-  or not worth continuing. Never describe steps that have already happened.
+- `plans`: **two or three distinct routes**, best-fit first. Empty only when the
+  item genuinely cannot be worked on — corrupted, mirrored, or finished.
+
+  Each plan needs:
+  - `name`: how a player would refer to it ("Essence-first, budget").
+  - `approach`: `deterministic`, `gamble`, or `hybrid`.
+  - `steps`: **the whole process, not the next click.** Three or more actions
+    unless the item truly is one step from done. Each step names the exact
+    method, what must be true before it, and what result moves you on. Start
+    from the item's current state and never describe steps already taken.
+  - `estimatedCost`, `stopWhen`, `abandonWhen`.
+
+  Rules for the set of plans:
+
+  - **At least one route must use a deterministic method wherever one exists** —
+    an essence that guarantees the modifier family, an omen that targets the
+    affix side, a rune that fills the need outright. Presenting only gambling
+    when a deterministic path is available is a failure of the answer, not a
+    property of the game.
+  - **The routes must differ in kind, not in wording.** A cheap gamble and a
+    costly deterministic build-up are two routes; "use an Exalted Orb" and "use
+    another Exalted Orb" are one.
+  - Order them best-fit-first for the stated intent, and say in each `name` who
+    it is for — budget, guaranteed, or high ceiling.
+
 - `possibleUpgrades`: up to four concrete things that would make this item
   better, each one short. Empty array if the item cannot be improved.
 - `nextBestAction`: one sentence, imperative. The single thing to do next.

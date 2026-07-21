@@ -21,12 +21,26 @@ const NARRATIVE_SCHEMA = {
   type: 'object',
   properties: {
     summary: { type: 'string' },
-    craftRecommendation: { type: 'string' },
-    steps: { type: 'array', items: { type: 'string' } },
+    plans: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+          approach: { type: 'string', enum: ['deterministic', 'gamble', 'hybrid'] },
+          steps: { type: 'array', items: { type: 'string' } },
+          estimatedCost: { type: 'string' },
+          stopWhen: { type: 'string' },
+          abandonWhen: { type: 'string' },
+        },
+        required: ['name', 'approach', 'steps', 'estimatedCost', 'stopWhen', 'abandonWhen'],
+        additionalProperties: false,
+      },
+    },
     possibleUpgrades: { type: 'array', items: { type: 'string' } },
     nextBestAction: { type: 'string' },
   },
-  required: ['summary', 'craftRecommendation', 'steps', 'possibleUpgrades', 'nextBestAction'],
+  required: ['summary', 'plans', 'possibleUpgrades', 'nextBestAction'],
   additionalProperties: false,
 } as const;
 

@@ -4,6 +4,7 @@ import type { ItemAnalysis } from '@poe2/models';
 import { invoke } from '@/lib/ipc';
 import { useAppStore } from '@/app/store';
 import { IntentPicker } from './IntentPicker';
+import { PlanCard } from './PlanCard';
 
 /**
  * Layer 2 of the pipeline: the model's explanation of the analysis above it.
@@ -56,30 +57,9 @@ export function NarrativePanel({ analysis }: { analysis: ItemAnalysis }): React.
         <div className="mt-4 flex flex-col gap-4 text-[13px] leading-relaxed">
           <p className="text-ink">{narrative.summary}</p>
 
-          <div>
-            <h3 className="mb-1 text-[10px] tracking-wider text-ink-dim uppercase">
-              Craft recommendation
-            </h3>
-            <p className="text-ink-muted">{narrative.craftRecommendation}</p>
-          </div>
-
-          {narrative.steps.length > 0 && (
-            <div>
-              <h3 className="mb-2 text-[10px] tracking-wider text-ink-dim uppercase">
-                Step by step
-              </h3>
-              <ol className="flex flex-col gap-2">
-                {narrative.steps.map((step, i) => (
-                  <li key={i} className="flex gap-3">
-                    <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-surface-3 font-mono text-[10px] text-ink-muted">
-                      {i + 1}
-                    </span>
-                    <span className="text-ink-muted">{step}</span>
-                  </li>
-                ))}
-              </ol>
-            </div>
-          )}
+          {narrative.plans.map((plan, index) => (
+            <PlanCard key={index} plan={plan} primary={index === 0} />
+          ))}
 
           {narrative.possibleUpgrades.length > 0 && (
             <div>

@@ -55,8 +55,7 @@ describe('app store', () => {
     // captured something else.
     store.setNarrative('first item', {
       summary: 'stale',
-      craftRecommendation: '',
-      steps: [],
+      plans: [],
       possibleUpgrades: [],
       nextBestAction: '',
       model: 'test',
@@ -71,8 +70,7 @@ describe('app store', () => {
 
     store.setNarrative('current item', {
       summary: 'fresh',
-      craftRecommendation: '',
-      steps: [],
+      plans: [],
       possibleUpgrades: [],
       nextBestAction: '',
       model: 'test',

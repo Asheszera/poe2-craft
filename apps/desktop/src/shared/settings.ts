@@ -41,6 +41,16 @@ const FIELDS = {
    */
   aiAutoNarrate: z.boolean(),
 
+  // --- economy -------------------------------------------------------------
+  /**
+   * Currency prices in Exalted Orbs, keyed by the game's own name.
+   *
+   * Entered by the player from the in-game currency exchange. Nothing ships a
+   * default: an invented rate is indistinguishable from a real one by the time
+   * it reaches the advice.
+   */
+  currencyPrices: z.record(z.string(), z.number().positive()),
+
   // --- capture -------------------------------------------------------------
   clipboardWatch: z.boolean(),
 } as const;
@@ -61,6 +71,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   aiEffort: 'low',
   aiCustomPrompt: '',
   aiAutoNarrate: false,
+  currencyPrices: {},
   clipboardWatch: true,
 };
 

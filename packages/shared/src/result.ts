@@ -24,6 +24,7 @@ export type AppErrorCode =
   | 'AI_PROVIDER_ERROR'
   | 'AI_NOT_CONFIGURED'
   | 'PRICE_SOURCE_UNAVAILABLE'
+  | 'PRICE_UNKNOWN'
   | 'RATE_LIMITED'
   | 'UNKNOWN';
 

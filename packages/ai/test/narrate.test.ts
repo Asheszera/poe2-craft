@@ -61,8 +61,24 @@ function fakeMessages(message: Partial<Anthropic.Message>): MessagesClient & { c
 
 const VALID_BODY = JSON.stringify({
   summary: 'A solid life-and-resistance base with room to grow.',
-  craftRecommendation: 'Exalt it — four slots are open and nothing good is at risk.',
-  steps: ['Use an Exalted Orb.', 'Stop once a third useful affix lands.'],
+  plans: [
+    {
+      name: 'Essence-first, guaranteed',
+      approach: 'deterministic',
+      steps: ['Apply an essence for the missing resistance.', 'Regal.', 'Exalt the last slot.'],
+      estimatedCost: 'unknown',
+      stopWhen: 'Three useful affixes are present.',
+      abandonWhen: 'The essence lands its lowest tier twice.',
+    },
+    {
+      name: 'Exalt and hope, budget',
+      approach: 'gamble',
+      steps: ['Use an Exalted Orb.', 'Repeat while slots remain.'],
+      estimatedCost: 'unknown',
+      stopWhen: 'A useful affix lands.',
+      abandonWhen: 'Two junk affixes fill the open slots.',
+    },
+  ],
   possibleUpgrades: ['Higher life tier', 'A second resistance'],
   nextBestAction: 'Use an Exalted Orb.',
 });
@@ -151,6 +167,22 @@ Item Level: 69
     expect(prompt).toContain('unknown base');
   });
 
+  it('demands more than one route, and one of them deterministic', () => {
+    const prompt = buildCraftPrompt(requestFor(RAW));
+
+    // The reported failure: only ever one plan, always gambling, essences
+    // ignored as though they did not exist.
+    expect(prompt).toMatch(/two or three distinct routes/i);
+    expect(prompt).toMatch(/at least one route must use a deterministic method/i);
+    expect(prompt).toMatch(/presenting only gambling/i);
+  });
+
+  it('demands the whole process rather than the next click', () => {
+    const prompt = buildCraftPrompt(requestFor(RAW));
+    expect(prompt).toMatch(/the whole process, not the next click/i);
+    expect(prompt).toMatch(/three or more actions/i);
+  });
+
   it('stays within a sane prompt size', () => {
     const prompt = buildCraftPrompt(requestFor(RAW));
     // Roughly 4 characters per token: the possibility space and the currency
@@ -196,6 +228,11 @@ describe('AnthropicProvider', () => {
     expect(result.value.narrative.nextBestAction).toBe('Use an Exalted Orb.');
     expect(result.value.narrative.model).toBe('claude-opus-4-8');
     expect(result.value.usage.inputTokens).toBe(100);
+
+    // Two routes of different kinds, each a real sequence rather than one click.
+    expect(result.value.narrative.plans).toHaveLength(2);
+    expect(result.value.narrative.plans[0]?.approach).toBe('deterministic');
+    expect(result.value.narrative.plans[0]?.steps.length).toBeGreaterThan(1);
   });
 
   it('sends the request shape this model version requires', async () => {

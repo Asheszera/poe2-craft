@@ -15,6 +15,7 @@
     "@poe2/data": "workspace:*",
     "@poe2/models": "workspace:*",
     "@poe2/parser": "workspace:*",
+    "@poe2/prices": "workspace:*",
     "@poe2/rules": "workspace:*",
     "@poe2/shared": "workspace:*"
   },

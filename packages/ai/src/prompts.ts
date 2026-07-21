@@ -5,6 +5,7 @@ import {
   type PoolOption,
 } from '@poe2/data';
 import { affixBudget, affixMods, type ItemMod, type ParsedItem } from '@poe2/models';
+import { EMPTY_TABLE, pricePrompt } from '@poe2/prices';
 import { canonicalTemplate } from '@poe2/shared';
 import craftTemplate from '../prompts/craft.md?raw';
 import jsonOutputTemplate from '../prompts/json-output.md?raw';
@@ -151,7 +152,12 @@ export function buildJsonSystemPrompt(extraInstructions?: string): string {
   return `${base}\n\n## Additional instructions from the user\n\n${extraInstructions.trim()}\n`;
 }
 
-export function buildCraftPrompt({ item, deterministic, context }: NarrativeRequest): string {
+export function buildCraftPrompt({
+  item,
+  deterministic,
+  context,
+  prices,
+}: NarrativeRequest): string {
   const affixes = affixMods(item);
   const budget = affixBudget(item.rarity);
 
@@ -175,6 +181,7 @@ export function buildCraftPrompt({ item, deterministic, context }: NarrativeRequ
     ),
     craftingMethods: toolsetPrompt(),
     modifierPool: describePool(item),
+    prices: pricePrompt(prices ?? EMPTY_TABLE(context.league)),
     craftIntent:
       context.craftIntent ??
       'The player did not say. Assume a practical, cost-aware improvement and note that you assumed it.',

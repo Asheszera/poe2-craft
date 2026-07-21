@@ -12,6 +12,7 @@
     "@anthropic-ai/sdk": "^0.112.4",
     "@poe2/data": "workspace:*",
     "@poe2/models": "workspace:*",
+    "@poe2/prices": "workspace:*",
     "@poe2/shared": "workspace:*",
     "zod": "^4.0.5"
   },

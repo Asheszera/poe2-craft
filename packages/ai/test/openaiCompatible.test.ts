@@ -32,8 +32,16 @@ Item Level: 82
 
 const BODY = {
   summary: 'Decent life base.',
-  craftRecommendation: 'Exalt it.',
-  steps: ['Use an Exalted Orb.', 'Stop when six affixes are filled.'],
+  plans: [
+    {
+      name: 'Essence-first',
+      approach: 'deterministic',
+      steps: ['Apply an essence.', 'Regal.', 'Exalt.'],
+      estimatedCost: 'unknown',
+      stopWhen: 'Three useful affixes.',
+      abandonWhen: 'Lowest tier twice.',
+    },
+  ],
   possibleUpgrades: ['Higher life tier'],
   nextBestAction: 'Use an Exalted Orb.',
 };
@@ -118,7 +126,7 @@ describe('OpenAICompatibleProvider', () => {
 
   it('omits response_format for providers that do not accept it', async () => {
     // Gemini's compatibility layer rejects the request rather than ignoring the
-    // field — the cause of a "Bad Request" that said nothing else.
+    // field - the cause of a "Bad Request" that said nothing else.
     const fetchImpl = fakeFetch(JSON.stringify(BODY));
     const gemini = new OpenAICompatibleProvider(
       {

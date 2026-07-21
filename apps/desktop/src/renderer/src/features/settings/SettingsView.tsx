@@ -6,6 +6,7 @@ import { Check, ExternalLink, KeyRound, Loader2, PlugZap } from 'lucide-react';
 import { presetFor, PROVIDER_PRESETS } from '@poe2/ai/presets';
 import type { SettingsPatch } from '@shared/settings';
 import { invoke } from '@/lib/ipc';
+import { PriceSettings } from './PriceSettings';
 
 const QUERY_KEY = ['settings'];
 
@@ -307,6 +308,8 @@ export function SettingsView(): React.JSX.Element {
           </Field>
         </div>
       </section>
+
+      <PriceSettings prices={data.currencyPrices} onChange={(p) => patch({ currencyPrices: p })} />
 
       {failure && (
         <div className="rounded-md border border-red-500/30 bg-red-500/5 p-3 text-[12px] text-red-200">

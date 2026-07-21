@@ -1,4 +1,5 @@
 import type { AnalysisContext, DeterministicAnalysis, NarrativeAnalysis, ParsedItem } from '@poe2/models';
+import type { PriceTable } from '@poe2/prices';
 import type { Result } from '@poe2/shared';
 
 /**
@@ -12,6 +13,13 @@ export interface NarrativeRequest {
   readonly item: ParsedItem;
   readonly deterministic: DeterministicAnalysis;
   readonly context: AnalysisContext;
+  /**
+   * Currency prices, when the player has configured any.
+   *
+   * Optional on purpose: everything below still works without it, and the
+   * prompt is explicit that unpriced means unknown rather than free.
+   */
+  readonly prices?: PriceTable | undefined;
 }
 
 export interface AIUsage {

@@ -1,6 +1,7 @@
 import { app, clipboard } from 'electron';
 import type { AnalysisContext } from '@poe2/models';
 import { createProvider, presetFor, type AIDebugEvent, type NarrativeResponse } from '@poe2/ai';
+import type { PriceTable } from '@poe2/prices';
 import { appError, err, type Result } from '@poe2/shared';
 import { analyzeText } from '../analysis/pipeline.js';
 import type { ClipboardWatcher } from '../clipboard/watcher.js';
@@ -80,7 +81,28 @@ async function narrateWith(
     item: analysis.value.item,
     deterministic: analysis.value.deterministic,
     context: contextFrom(settings, craftIntent),
+    prices: priceTableFrom(settings),
   });
+}
+
+/**
+ * The player's own price list, as a table.
+ *
+ * Built from settings rather than fetched: no public endpoint serves PoE2
+ * currency prices in a way this app may rely on (the trade API needs an
+ * authenticated session and rate-limits automated search; poe.ninja serves its
+ * browser application, not a documented feed). Whatever the player types is
+ * therefore the most trustworthy source available — and it is traceable, which
+ * a scraped number would not be.
+ */
+function priceTableFrom(settings: SettingsStore): PriceTable {
+  const s = settings.settings;
+  return {
+    league: s.league,
+    source: 'Entered manually',
+    updatedAt: new Date().toISOString(),
+    entries: Object.entries(s.currencyPrices).map(([currency, value]) => ({ currency, value })),
+  };
 }
 
 /**

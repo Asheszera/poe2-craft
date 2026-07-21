@@ -52,18 +52,42 @@ export const DeterministicAnalysisSchema = z.object({
 });
 export type DeterministicAnalysis = z.infer<typeof DeterministicAnalysisSchema>;
 
+/**
+ * One route from the item's current state to the player's goal.
+ *
+ * Crafting has more than one answer. The cheap gamble and the expensive
+ * deterministic route are both legitimate, and which is right depends on a
+ * budget only the player knows — so the model presents them side by side rather
+ * than choosing on their behalf.
+ *
+ * A single `steps` array could not express this: it forced every plan into one
+ * linear sequence, which is why advice collapsed to a single currency and
+ * deterministic methods like essences were quietly dropped.
+ */
+export const CraftPlanSchema = z.object({
+  /** Short label, e.g. "Essence-first, budget". */
+  name: z.string(),
+  /** How the route gets there — the axis the player actually chooses on. */
+  approach: z.enum(['deterministic', 'gamble', 'hybrid']),
+  /** Ordered actions. A route worth naming has more than one step. */
+  steps: z.array(z.string()),
+  /** Total cost, or an admission that it is unknown. */
+  estimatedCost: z.string(),
+  /** What "done" looks like for this route. */
+  stopWhen: z.string(),
+  /** The result that means abandon the item and start from a fresh base. */
+  abandonWhen: z.string(),
+});
+export type CraftPlan = z.infer<typeof CraftPlanSchema>;
+
 /** Layer 2: free-form prose produced by the configured AI provider. */
 export const NarrativeAnalysisSchema = z.object({
   summary: z.string(),
-  craftRecommendation: z.string(),
   /**
-   * Ordered crafting plan, one action per entry.
-   *
-   * Separate from `craftRecommendation` so a multi-step walkthrough renders as
-   * a numbered list rather than a wall of prose. Empty when the item needs no
-   * plan — corrupted, finished, or not worth continuing.
+   * Routes the player can take, best-fit first. Empty when nothing can be done
+   * — corrupted, finished, or not worth further currency.
    */
-  steps: z.array(z.string()).default([]),
+  plans: z.array(CraftPlanSchema).default([]),
   possibleUpgrades: z.array(z.string()),
   nextBestAction: z.string(),
   model: z.string(),
