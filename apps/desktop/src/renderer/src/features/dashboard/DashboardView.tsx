@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Loader2, Sparkles, Trash2 } from 'lucide-react';
 import { invoke } from '@/lib/ipc';
@@ -41,6 +42,14 @@ const RARITY_TEXT: Record<string, string> = {
 export function DashboardView(): React.JSX.Element {
   const queryClient = useQueryClient();
   const setActiveView = useAppStore((s) => s.setActiveView);
+  /**
+   * Two-step confirmation for the one irreversible action in the app.
+   *
+   * Deleting a single entry is cheap to redo — capture the item again. Clearing
+   * the table is not: it takes every recorded sale and note with it, and a
+   * misplaced click had been enough.
+   */
+  const [confirmingClear, setConfirmingClear] = useState(false);
 
   const stats = useQuery({ queryKey: STATS_KEY, queryFn: () => invoke('history:stats', null) });
   const entries = useQuery({
@@ -59,7 +68,10 @@ export function DashboardView(): React.JSX.Element {
   });
   const clear = useMutation({
     mutationFn: () => invoke('history:clear', null),
-    onSuccess: refresh,
+    onSuccess: () => {
+      setConfirmingClear(false);
+      refresh();
+    },
   });
 
   if (!stats.data || !entries.data) {
@@ -97,16 +109,38 @@ export function DashboardView(): React.JSX.Element {
       <section className="rounded-lg border border-line bg-surface">
         <header className="flex items-center justify-between border-b border-line px-4 py-3">
           <span className="text-[12px] font-medium">History</span>
-          {total > 0 && (
-            <button
-              type="button"
-              onClick={() => clear.mutate()}
-              className="flex items-center gap-1.5 text-[11px] text-ink-dim transition-colors hover:text-red-300"
-            >
-              <Trash2 size={12} />
-              Clear all
-            </button>
-          )}
+          {total > 0 &&
+            (confirmingClear ? (
+              <span className="flex items-center gap-2 text-[11px]">
+                <span className="text-ink-muted">
+                  Delete all {total} entries, including recorded sales?
+                </span>
+                <button
+                  type="button"
+                  onClick={() => clear.mutate()}
+                  disabled={clear.isPending}
+                  className="rounded border border-red-400/40 bg-red-500/10 px-2 py-1 text-red-300 transition-colors hover:bg-red-500/20 disabled:opacity-50"
+                >
+                  Delete
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmingClear(false)}
+                  className="rounded border border-line px-2 py-1 text-ink-dim transition-colors hover:text-ink"
+                >
+                  Cancel
+                </button>
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setConfirmingClear(true)}
+                className="flex items-center gap-1.5 text-[11px] text-ink-dim transition-colors hover:text-red-300"
+              >
+                <Trash2 size={12} />
+                Clear all
+              </button>
+            ))}
         </header>
 
         {entries.data.length === 0 ? (

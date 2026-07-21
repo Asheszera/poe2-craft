@@ -164,8 +164,22 @@ resistance 250 — a fourfold gap that counting tiers had flattened to nothing.
 
 ### What is still missing
 
-Weapons other than maces, sceptres, spears, staves, wands, bows and crossbows —
-swords, axes, daggers, claws, flails, warstaves — have pages with no graded
-weights, as do the `str_dex_int` armour variants. Those bases fall back to the
-tier approximation and say so. The scraper prints the list on every run rather
-than filling the gap with something invented.
+**1585 of 1767 bases** carry published weights; 2.3% of options within them have
+no weight and report an unknown chance. The rest fall back to the tier
+approximation and say so.
+
+The gap is swords, axes, daggers, claws, flails, traps and the `str_dex_int`
+armour variants: those poe2db pages exist and list the modifiers but publish no
+graded weight for any of them. Sceptres and maces, structurally identical pages,
+do — so this is a hole in poe2db's data, not in the scraping.
+
+Other sources were checked for the remainder and none has it: poe2wiki's
+`mod_spawn_weights` has no weight column, and Craft of Exile — the obvious
+candidate, being a crafting probability calculator — still serves PoE1 data from
+`poec_data.json` with only a PoE2 menu stub. The scraper prints the missing
+classes on every run rather than filling them with something invented.
+
+Two slugs were wrong on the first pass and cost a class each in silence:
+`Warstaff` is filed as `Quarterstaves` and `TrapTool` as `Traps`. A guessed slug
+404s and looks identical to a class with no weights, which is why the run report
+distinguishes "HTTP error" from "records, none graded".

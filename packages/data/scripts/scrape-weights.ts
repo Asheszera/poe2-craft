@@ -59,7 +59,10 @@ const SLUGS: Readonly<Record<string, string>> = {
   Crossbow: 'Crossbows',
   Wand: 'Wands',
   Staff: 'Staves',
-  Warstaff: 'Warstaves',
+  // The game's class is `Warstaff`; poe2db files them under the name the
+  // players use. A guessed `Warstaves` returns 404 and would have cost this
+  // class its weights silently.
+  Warstaff: 'Quarterstaves',
   Sceptre: 'Sceptres',
   Dagger: 'Daggers',
   Claw: 'Claws',
@@ -71,7 +74,7 @@ const SLUGS: Readonly<Record<string, string>> = {
   'Two Hand Axe': 'Two_Hand_Axes',
   'One Hand Mace': 'One_Hand_Maces',
   'Two Hand Mace': 'Two_Hand_Maces',
-  TrapTool: 'Trap_Tools',
+  TrapTool: 'Traps',
   FishingRod: 'Fishing_Rods',
 };
 
