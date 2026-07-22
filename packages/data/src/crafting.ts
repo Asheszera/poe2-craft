@@ -1,4 +1,4 @@
-import type { CurrencyDataset, CurrencyEntry } from './schemas.js';
+import type { CurrencyDataset, CurrencyEffectDataset, CurrencyEntry } from './schemas.js';
 
 /**
  * The crafting toolset, described for a prompt.
@@ -55,3 +55,43 @@ export function craftingToolsetPrompt(dataset: CurrencyDataset): string {
 /** True when the name exists in the live game data. Used to check a plan. */
 export const isKnownCurrency = (dataset: CurrencyDataset, name: string): boolean =>
   dataset.entries.some((entry) => entry.name.toLowerCase() === name.trim().toLowerCase());
+
+/**
+ * The core orbs with the game's own description of what each does.
+ *
+ * This exists because the community model of PoE2 crafting is often PoE1's, and
+ * a model trained on that will describe a Chaos Orb as a full reroll — in PoE2
+ * it removes one modifier and adds one. Giving the model the game's own text
+ * for the currencies a plan actually names step by step stops it planning
+ * around remembered mechanics.
+ *
+ * Only the deterministic orbs are listed. Vaal ("modifies unpredictably"),
+ * omens and essences do more than one line can state, and are left to the
+ * summarised families above rather than pinned to a description that flattens
+ * them.
+ */
+const CORE_ORBS = [
+  'Orb of Transmutation',
+  'Orb of Augmentation',
+  'Regal Orb',
+  'Orb of Alchemy',
+  'Exalted Orb',
+  'Chaos Orb',
+  'Orb of Annulment',
+  'Divine Orb',
+  'Fracturing Orb',
+] as const;
+
+export function currencyEffectsPrompt(dataset: CurrencyEffectDataset): string {
+  const byName = new Map(dataset.entries.map((entry) => [entry.name, entry.description]));
+  const lines: string[] = [];
+
+  for (const name of CORE_ORBS) {
+    const description = byName.get(name);
+    // One-line descriptions only: the multi-line ones (Hinekora's Lock) explain
+    // a mechanic, not an effect, and belong in prose rather than a reference row.
+    if (description && !description.includes('\n')) lines.push(`- **${name}**: ${description}`);
+  }
+
+  return lines.join('\n');
+}

@@ -1,11 +1,35 @@
 import { describe, expect, it } from 'vitest';
 import {
+  currencyEffectsDataset,
+  CurrencyEffectDatasetSchema,
+  currencyEffectsPrompt,
   defaultModPool,
   ModPoolDatasetSchema,
   modPoolDataset,
   ModWeightDatasetSchema,
   modWeightsDataset,
 } from '../src/index.js';
+
+describe('currency effects dataset', () => {
+  it('conforms to its schema', () => {
+    expect(CurrencyEffectDatasetSchema.safeParse(currencyEffectsDataset).success).toBe(true);
+  });
+
+  it('carries the game’s own words for the core orbs', () => {
+    const byName = new Map(currencyEffectsDataset.entries.map((e) => [e.name, e.description]));
+    // The PoE2 Chaos Orb, straight from the item, is one-out-one-in.
+    expect(byName.get('Chaos Orb')).toBe(
+      'Removes a random modifier and augments a Rare item with a new random modifier',
+    );
+    expect(byName.get('Exalted Orb')).toBe('Augments a Rare item with a new random modifier');
+  });
+
+  it('renders the core orbs into a prompt section', () => {
+    const prompt = currencyEffectsPrompt(currencyEffectsDataset);
+    expect(prompt).toContain('**Chaos Orb**');
+    expect(prompt).toContain('**Exalted Orb**');
+  });
+});
 
 const pool = defaultModPool();
 

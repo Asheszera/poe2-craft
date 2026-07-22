@@ -70,6 +70,8 @@ export class ModPoolIndex {
   readonly #modsById = new Map<string, ModEntry>();
   /** Canonical template → the groups any modifier with that text belongs to. */
   readonly #groupsByKey = new Map<string, Set<string>>();
+  /** Canonical template → the tags of the first ladder carrying it. */
+  readonly #tagsByKey = new Map<string, readonly string[]>();
 
   readonly #weights: ModWeightDataset | null;
 
@@ -82,6 +84,8 @@ export class ModPoolIndex {
       let groups = this.#groupsByKey.get(entry.key);
       if (!groups) this.#groupsByKey.set(entry.key, (groups = new Set()));
       for (const group of entry.groups) groups.add(group);
+
+      if (!this.#tagsByKey.has(entry.key)) this.#tagsByKey.set(entry.key, entry.tags);
     }
   }
 
@@ -123,6 +127,23 @@ export class ModPoolIndex {
       for (const group of this.#groupsByKey.get(key) ?? []) occupied.add(group);
     }
     return occupied;
+  }
+
+  /**
+   * The exclusion group a modifier template belongs to, or null when unknown.
+   *
+   * A template can in principle map to more than one group; the first is
+   * returned, which is enough for identity — two modifiers sharing any group
+   * cannot coexist, so any one of them serves to detect the collision.
+   */
+  groupFor(key: string): string | null {
+    for (const group of this.#groupsByKey.get(key) ?? []) return group;
+    return null;
+  }
+
+  /** Tags carried by a modifier template, from the first ladder that has it. */
+  tagsFor(key: string): readonly string[] {
+    return this.#tagsByKey.get(key) ?? [];
   }
 
   get baseCount(): number {

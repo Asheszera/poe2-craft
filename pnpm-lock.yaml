@@ -35,6 +35,9 @@ importers:
       '@poe2/ai':
         specifier: workspace:*
         version: link:../../packages/ai
+      '@poe2/craft':
+        specifier: workspace:*
+        version: link:../../packages/craft
       '@poe2/data':
         specifier: workspace:*
         version: link:../../packages/data
@@ -130,6 +133,28 @@ importers:
       '@poe2/rules':
         specifier: workspace:*
         version: link:../rules
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.7
+        version: 3.2.7(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.1)
+
+  packages/craft:
+    dependencies:
+      '@poe2/data':
+        specifier: workspace:*
+        version: link:../data
+      '@poe2/models':
+        specifier: workspace:*
+        version: link:../models
+      '@poe2/shared':
+        specifier: workspace:*
+        version: link:../shared
+    devDependencies:
+      '@poe2/parser':
+        specifier: workspace:*
+        version: link:../parser
       typescript:
         specifier: ^5.7.2
         version: 5.9.3

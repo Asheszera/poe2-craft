@@ -199,6 +199,15 @@ Item Level: 80
     expect(prompt).toMatch(/blocked by modifiers already on it/);
   });
 
+  it('states the game’s own effect for the Chaos Orb, not PoE1 behaviour', () => {
+    const prompt = buildCraftPrompt(requestFor(RAW));
+
+    // The single most common mistake a model carried from PoE1 makes: treating
+    // Chaos as a full reroll. The prompt states the PoE2 effect verbatim.
+    expect(prompt).toContain('Removes a random modifier and augments');
+    expect(prompt).toContain('is not a full reroll');
+  });
+
   it('names the real currency catalogue rather than relying on recall', () => {
     const prompt = buildCraftPrompt(requestFor(RAW));
 

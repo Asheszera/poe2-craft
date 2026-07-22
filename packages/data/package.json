@@ -11,8 +11,9 @@
     "scrape:mods": "tsx scripts/scrape-mods.ts",
     "scrape:currencies": "tsx scripts/scrape-currencies.ts",
     "scrape:pool": "tsx scripts/scrape-mod-pool.ts",
-    "scrape": "pnpm scrape:stats && pnpm scrape:mods && pnpm scrape:currencies && pnpm scrape:pool && pnpm scrape:weights",
-    "scrape:weights": "tsx scripts/scrape-weights.ts"
+    "scrape": "pnpm scrape:stats && pnpm scrape:mods && pnpm scrape:currencies && pnpm scrape:effects && pnpm scrape:pool && pnpm scrape:weights",
+    "scrape:weights": "tsx scripts/scrape-weights.ts",
+    "scrape:effects": "tsx scripts/scrape-currency-effects.ts"
   },
   "dependencies": {
     "@poe2/models": "workspace:*",

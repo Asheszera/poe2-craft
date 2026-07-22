@@ -132,6 +132,29 @@ export const ModPoolGroupSchema = z.object({
 export type ModPoolGroup = z.infer<typeof ModPoolGroupSchema>;
 
 /**
+ * What a currency does, in the game's own words.
+ *
+ * The trade API names currencies and says nothing about their effect, so the
+ * description shipped with the item is the only first-party statement of what
+ * it does. Kept verbatim: the crafting simulator's operation table is checked
+ * against this text, so a patch that changes an effect fails a test instead of
+ * quietly making the simulation wrong.
+ */
+export const CurrencyEffectSchema = z.object({
+  name: z.string().min(1),
+  itemClass: z.string(),
+  /** Wiki markup stripped; otherwise exactly what the game displays. */
+  description: z.string().min(1),
+  dropLevel: z.number().int().nonnegative(),
+});
+export type CurrencyEffect = z.infer<typeof CurrencyEffectSchema>;
+
+export const CurrencyEffectDatasetSchema = DatasetMetaSchema.extend({
+  entries: z.array(CurrencyEffectSchema),
+});
+export type CurrencyEffectDataset = z.infer<typeof CurrencyEffectDatasetSchema>;
+
+/**
  * How likely each modifier is to roll, per item context.
  *
  * Weights are per tag in the game data; poe2db resolves them per item-class

@@ -1,6 +1,8 @@
 import {
   craftingToolsetPrompt,
   currenciesDataset,
+  currencyEffectsDataset,
+  currencyEffectsPrompt,
   defaultModPool,
   type PoolOption,
 } from '@poe2/data';
@@ -156,6 +158,10 @@ let craftingMethods: string | null = null;
 const toolsetPrompt = (): string =>
   (craftingMethods ??= craftingToolsetPrompt(currenciesDataset));
 
+let currencyEffects: string | null = null;
+const effectsPrompt = (): string =>
+  (currencyEffects ??= currencyEffectsPrompt(currencyEffectsDataset));
+
 export function buildSystemPrompt(extraInstructions?: string): string {
   if (!extraInstructions || extraInstructions.trim().length === 0) return systemTemplate;
 
@@ -241,6 +247,7 @@ export function buildCraftPrompt({
       'no rule matched this item',
     ),
     craftingMethods: toolsetPrompt(),
+    currencyEffects: effectsPrompt(),
     modifierPool: describePool(item),
     prices: pricePrompt(prices ?? EMPTY_TABLE(context.league)),
     craftIntent:

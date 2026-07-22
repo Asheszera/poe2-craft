@@ -1,10 +1,16 @@
 import rawCurrencies from '../data/currencies.json' with { type: 'json' };
 import rawModPool from '../data/mod-pool.json' with { type: 'json' };
 import rawModWeights from '../data/mod-weights.json' with { type: 'json' };
+import rawCurrencyEffects from '../data/currency-effects.json' with { type: 'json' };
 import rawMods from '../data/mods.json' with { type: 'json' };
 import rawStats from '../data/stats.json' with { type: 'json' };
 import { ModPoolIndex } from './modPool.js';
-import type { CurrencyDataset, ModPoolDataset, ModWeightDataset } from './schemas.js';
+import type {
+  CurrencyDataset,
+  CurrencyEffectDataset,
+  ModPoolDataset,
+  ModWeightDataset,
+} from './schemas.js';
 import type { EnrichmentContext } from './enrich.js';
 import { ModIndex } from './modIndex.js';
 import type { ModDataset, StatDataset } from './schemas.js';
@@ -38,6 +44,7 @@ export const modsDataset = rawMods as ModDataset;
 export const currenciesDataset: CurrencyDataset = rawCurrencies;
 export const modPoolDataset = rawModPool as ModPoolDataset;
 export const modWeightsDataset = rawModWeights as ModWeightDataset;
+export const currencyEffectsDataset: CurrencyEffectDataset = rawCurrencyEffects;
 
 let poolIndex: ModPoolIndex | null = null;
 
