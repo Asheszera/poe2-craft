@@ -81,8 +81,17 @@ export function defaultSpecFor(item: ParsedItem, league: string): TradeQuerySpec
     name: item.rarity === 'Unique' ? item.name || null : null,
     baseType: item.baseType || null,
     rarity: rarityOption(item.rarity),
+    // "Instant Buyout and In Person" — the site's own default: online sellers,
+    // both sale methods, so the cheapest priced listing is included.
+    status: 'available',
     minItemLevel: null,
-    onlineOnly: true,
+    // Match the item's own state: a corrupted or mirrored item is a different
+    // market, and pricing it against clean ones would mislead.
+    corrupted: item.flags.corrupted,
+    mirrored: item.flags.mirrored,
+    collapse: false,
+    indexed: null,
+    maxBuyout: null,
     filters: searchableFilters(item.mods),
   };
 }
@@ -105,7 +114,7 @@ function apiFilter(filter: TradeStatFilter): Record<string, unknown> {
  */
 export function buildQueryBody(spec: TradeQuerySpec): Record<string, unknown> {
   const query: Record<string, unknown> = {
-    status: { option: spec.onlineOnly ? 'online' : 'any' },
+    status: { option: spec.status },
   };
 
   if (spec.name) query['name'] = spec.name;
@@ -113,13 +122,24 @@ export function buildQueryBody(spec: TradeQuerySpec): Record<string, unknown> {
 
   const typeFilters: Record<string, unknown> = {};
   if (spec.rarity !== 'any') typeFilters['rarity'] = { option: spec.rarity };
+  if (spec.minItemLevel !== null) typeFilters['ilvl'] = { min: spec.minItemLevel };
 
+  // The trade site's option ids for a yes/no filter are the strings "true"
+  // and "false"; a null tri-state is left out to mean "either".
   const miscFilters: Record<string, unknown> = {};
-  if (spec.minItemLevel !== null) miscFilters['ilvl'] = { min: spec.minItemLevel };
+  if (spec.corrupted !== null) miscFilters['corrupted'] = { option: String(spec.corrupted) };
+  if (spec.mirrored !== null) miscFilters['mirrored'] = { option: String(spec.mirrored) };
+
+  const tradeFilters: Record<string, unknown> = {};
+  if (spec.collapse) tradeFilters['collapse'] = { option: 'true' };
+  if (spec.indexed !== null) tradeFilters['indexed'] = { option: spec.indexed };
+  // No option = the Exalted-Orb-equivalent the site normalises every price to.
+  if (spec.maxBuyout !== null) tradeFilters['price'] = { max: spec.maxBuyout };
 
   const filters: Record<string, unknown> = {};
   if (Object.keys(typeFilters).length > 0) filters['type_filters'] = { filters: typeFilters };
   if (Object.keys(miscFilters).length > 0) filters['misc_filters'] = { filters: miscFilters };
+  if (Object.keys(tradeFilters).length > 0) filters['trade_filters'] = { filters: tradeFilters };
   if (Object.keys(filters).length > 0) query['filters'] = filters;
 
   const enabled = spec.filters.filter((filter) => filter.enabled);

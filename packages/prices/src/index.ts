@@ -42,12 +42,16 @@ export {
   TradePriceSchema,
   TradeResultSchema,
   TradeRaritySchema,
+  TradeStatusSchema,
+  TradeIndexedSchema,
   type TradeQuerySpec,
   type TradeStatFilter,
   type TradeListing,
   type TradePrice,
   type TradeResult,
   type TradeRarity,
+  type TradeStatus,
+  type TradeIndexed,
 } from './trade/types.js';
 export { defaultSpecFor, buildQueryBody, browseUrl } from './trade/query.js';
 export { TradeClient, type TradeClientOptions } from './trade/client.js';

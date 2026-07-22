@@ -41,6 +41,46 @@ export const TradeRaritySchema = z.enum([
 export type TradeRarity = z.infer<typeof TradeRaritySchema>;
 
 /**
+ * Seller availability and sale method, as one control — the trade site's own
+ * `status` options, verbatim from its filter metadata:
+ *
+ *  - `available`  — Instant Buyout and In Person (online sellers, either way)
+ *  - `securable`  — Instant Buyout only (a fixed price you can act on)
+ *  - `onlineleague` — In Person, online in this league
+ *  - `online`     — In Person, online
+ *  - `any`        — everything, including offline
+ *
+ * This is the "online/instant" question a boolean could not express: an
+ * instant-buyout listing has a real price, an in-person one is a whisper to
+ * negotiate, and a price check wants to know which.
+ */
+export const TradeStatusSchema = z.enum([
+  'available',
+  'securable',
+  'onlineleague',
+  'online',
+  'any',
+]);
+export type TradeStatus = z.infer<typeof TradeStatusSchema>;
+
+/**
+ * How recently a listing was indexed, to keep stale ones out — the trade
+ * site's `indexed` option ids. Null means any age.
+ */
+export const TradeIndexedSchema = z.enum([
+  '1hour',
+  '3hours',
+  '12hours',
+  '1day',
+  '3days',
+  '1week',
+  '2weeks',
+  '1month',
+  '2months',
+]);
+export type TradeIndexed = z.infer<typeof TradeIndexedSchema>;
+
+/**
  * One of the item's modifiers, as a search filter the player can steer.
  *
  * `id` is the trade stat id the parser already resolved onto the item mod
@@ -80,8 +120,21 @@ export const TradeQuerySpecSchema = z.object({
   /** Exact base to match, or null to search the modifiers across any base. */
   baseType: z.string().nullable(),
   rarity: TradeRaritySchema,
+  status: TradeStatusSchema,
   minItemLevel: z.number().int().nullable(),
-  onlineOnly: z.boolean(),
+  /**
+   * Match the item's corruption/mirror state. Tri-state: true = only these,
+   * false = only not these, null = either. Seeded from the item itself, because
+   * a corrupted or mirrored item trades in a different market from a clean one.
+   */
+  corrupted: z.boolean().nullable(),
+  mirrored: z.boolean().nullable(),
+  /** One listing per seller account, so a single flooded seller cannot skew it. */
+  collapse: z.boolean(),
+  /** Drop listings older than this; null keeps every age. */
+  indexed: TradeIndexedSchema.nullable(),
+  /** Cap the buyout in Exalted-Orb-equivalent, to trim outliers; null = no cap. */
+  maxBuyout: z.number().nullable(),
   filters: z.array(TradeStatFilterSchema),
 });
 export type TradeQuerySpec = z.infer<typeof TradeQuerySpecSchema>;

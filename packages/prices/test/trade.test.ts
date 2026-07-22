@@ -81,6 +81,8 @@ describe('building a search from a captured item', () => {
     expect(spec.rarity).toBe('rare');
     // A rare's name is random; it is not a search term.
     expect(spec.name).toBeNull();
+    // The site's own default: online sellers, instant-buyout and in-person.
+    expect(spec.status).toBe('available');
     expect(spec.filters).toHaveLength(2);
     // Presence by default — the app never imposes a value the player didn't ask
     // for, but it offers the rolled one so tightening is one click.
@@ -118,6 +120,16 @@ describe('building a search from a captured item', () => {
     expect(defaultSpecFor(item([], 'Currency'), 'x').rarity).toBe('any');
   });
 
+  it('prices an item against its own corruption and mirror state', () => {
+    const clean = defaultSpecFor(item([]), 'x');
+    expect(clean.corrupted).toBe(false);
+    expect(clean.mirrored).toBe(false);
+
+    const corrupted = item([]);
+    corrupted.flags.corrupted = true;
+    expect(defaultSpecFor(corrupted, 'x').corrupted).toBe(true);
+  });
+
   it('searches a unique by its name, which is how the market indexes it', () => {
     const unique = item([], 'Unique');
     const spec = defaultSpecFor(unique, 'Standard');
@@ -134,14 +146,19 @@ describe('rendering a spec into the trade API body', () => {
     name: null,
     baseType: 'Expert Vaal Gauntlets',
     rarity: 'rare',
+    status: 'available',
     minItemLevel: null,
-    onlineOnly: true,
+    corrupted: null,
+    mirrored: null,
+    collapse: false,
+    indexed: null,
+    maxBuyout: null,
     filters: [
       { id: 'explicit.stat_life', text: 'Life', rolled: 80, enabled: true, min: null, max: null },
     ],
   };
 
-  it('nests type, rarity and the stat filter the way the API expects', () => {
+  it('nests type, rarity, status and the stat filter the way the API expects', () => {
     const body = buildQueryBody(base) as {
       query: {
         status: { option: string };
@@ -151,10 +168,43 @@ describe('rendering a spec into the trade API body', () => {
       };
     };
 
-    expect(body.query.status.option).toBe('online');
+    expect(body.query.status.option).toBe('available');
     expect(body.query.type).toBe('Expert Vaal Gauntlets');
     expect(body.query.filters?.type_filters?.filters.rarity?.option).toBe('rare');
     expect(body.query.stats[0]?.filters[0]).toEqual({ id: 'explicit.stat_life' });
+  });
+
+  it('renders the trade and misc filters with the site’s own option ids', () => {
+    const body = buildQueryBody({
+      ...base,
+      status: 'securable',
+      corrupted: true,
+      mirrored: false,
+      collapse: true,
+      indexed: '3days',
+      maxBuyout: 50,
+    }) as {
+      query: {
+        status: { option: string };
+        filters?: {
+          misc_filters?: { filters: { corrupted?: { option: string }; mirrored?: { option: string } } };
+          trade_filters?: {
+            filters: {
+              collapse?: { option: string };
+              indexed?: { option: string };
+              price?: { max: number };
+            };
+          };
+        };
+      };
+    };
+
+    expect(body.query.status.option).toBe('securable');
+    expect(body.query.filters?.misc_filters?.filters.corrupted?.option).toBe('true');
+    expect(body.query.filters?.misc_filters?.filters.mirrored?.option).toBe('false');
+    expect(body.query.filters?.trade_filters?.filters.collapse?.option).toBe('true');
+    expect(body.query.filters?.trade_filters?.filters.indexed?.option).toBe('3days');
+    expect(body.query.filters?.trade_filters?.filters.price?.max).toBe(50);
   });
 
   it('adds a value window only when a bound is set', () => {

@@ -1,9 +1,44 @@
 import { useEffect, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import type { TradeListing, TradeQuerySpec, TradeResult } from '@poe2/prices';
+import type {
+  TradeIndexed,
+  TradeListing,
+  TradeQuerySpec,
+  TradeResult,
+  TradeStatus,
+} from '@poe2/prices';
 import { ExternalLink, Loader2, Search, Tag } from 'lucide-react';
 import { invoke } from '@/lib/ipc';
 import { useAppStore } from '@/app/store';
+
+/** The trade site's status options, in its own words. */
+const STATUS_LABELS: Record<TradeStatus, string> = {
+  available: 'Buyout + in person',
+  securable: 'Instant buyout only',
+  onlineleague: 'In person (in league)',
+  online: 'In person (online)',
+  any: 'Any, incl. offline',
+};
+
+/** "Listed within" options; empty string is the null "any age". */
+const INDEXED_LABELS: Record<TradeIndexed, string> = {
+  '1hour': '1 hour',
+  '3hours': '3 hours',
+  '12hours': '12 hours',
+  '1day': '1 day',
+  '3days': '3 days',
+  '1week': '1 week',
+  '2weeks': '2 weeks',
+  '1month': '1 month',
+  '2months': '2 months',
+};
+
+/** A tri-state (Any / Yes / No) as the trade filters model it. */
+const triValue = (v: boolean | null): string => (v === null ? '' : v ? 'true' : 'false');
+const triParse = (s: string): boolean | null => (s === '' ? null : s === 'true');
+
+const controlClass =
+  'rounded border border-line bg-surface-2 px-1.5 py-1 text-ink outline-none focus:border-accent/50';
 
 /**
  * A live price check against the official PoE2 trade site.
@@ -147,7 +182,7 @@ export function LiveMarketSearch(): React.JSX.Element {
       ) : (
         <>
           {/* Item-level constraints */}
-          <div className="flex flex-wrap items-center gap-3 text-[11px]">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[11px]">
             {spec.baseType && (
               <label className="flex items-center gap-1.5 text-ink-muted">
                 <input
@@ -163,11 +198,25 @@ export function LiveMarketSearch(): React.JSX.Element {
               <select
                 value={spec.rarity}
                 onChange={(e) => patchSpec({ rarity: e.target.value as TradeQuerySpec['rarity'] })}
-                className="rounded border border-line bg-surface-2 px-1.5 py-1 text-ink outline-none focus:border-accent/50"
+                className={controlClass}
               >
                 {(['any', 'normal', 'magic', 'rare', 'unique', 'nonunique'] as const).map((r) => (
                   <option key={r} value={r}>
                     {r}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex items-center gap-1.5 text-ink-muted">
+              sellers
+              <select
+                value={spec.status}
+                onChange={(e) => patchSpec({ status: e.target.value as TradeStatus })}
+                className={controlClass}
+              >
+                {(Object.keys(STATUS_LABELS) as TradeStatus[]).map((s) => (
+                  <option key={s} value={s}>
+                    {STATUS_LABELS[s]}
                   </option>
                 ))}
               </select>
@@ -179,16 +228,72 @@ export function LiveMarketSearch(): React.JSX.Element {
                 value={spec.minItemLevel ?? ''}
                 onChange={(e) => patchSpec({ minItemLevel: parseNum(e.target.value) })}
                 placeholder="any"
-                className="w-14 rounded border border-line bg-surface-2 px-1.5 py-1 text-ink outline-none focus:border-accent/50"
+                className={`w-14 ${controlClass}`}
+              />
+            </label>
+          </div>
+
+          {/* Trade constraints */}
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[11px]">
+            <label className="flex items-center gap-1.5 text-ink-muted">
+              corrupted
+              <select
+                value={triValue(spec.corrupted)}
+                onChange={(e) => patchSpec({ corrupted: triParse(e.target.value) })}
+                className={controlClass}
+              >
+                <option value="">any</option>
+                <option value="true">yes</option>
+                <option value="false">no</option>
+              </select>
+            </label>
+            <label className="flex items-center gap-1.5 text-ink-muted">
+              mirrored
+              <select
+                value={triValue(spec.mirrored)}
+                onChange={(e) => patchSpec({ mirrored: triParse(e.target.value) })}
+                className={controlClass}
+              >
+                <option value="">any</option>
+                <option value="true">yes</option>
+                <option value="false">no</option>
+              </select>
+            </label>
+            <label className="flex items-center gap-1.5 text-ink-muted">
+              listed
+              <select
+                value={spec.indexed ?? ''}
+                onChange={(e) =>
+                  patchSpec({ indexed: e.target.value === '' ? null : (e.target.value as TradeIndexed) })
+                }
+                className={controlClass}
+              >
+                <option value="">any time</option>
+                {(Object.keys(INDEXED_LABELS) as TradeIndexed[]).map((i) => (
+                  <option key={i} value={i}>
+                    {INDEXED_LABELS[i]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex items-center gap-1.5 text-ink-muted">
+              max ex
+              <input
+                inputMode="numeric"
+                value={spec.maxBuyout ?? ''}
+                onChange={(e) => patchSpec({ maxBuyout: parseNum(e.target.value) })}
+                placeholder="any"
+                title="Cap the buyout, in Exalted-Orb equivalent"
+                className={`w-16 ${controlClass}`}
               />
             </label>
             <label className="flex items-center gap-1.5 text-ink-muted">
               <input
                 type="checkbox"
-                checked={spec.onlineOnly}
-                onChange={(e) => patchSpec({ onlineOnly: e.target.checked })}
+                checked={spec.collapse}
+                onChange={(e) => patchSpec({ collapse: e.target.checked })}
               />
-              online only
+              one per seller
             </label>
           </div>
 
