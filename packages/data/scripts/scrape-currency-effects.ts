@@ -29,6 +29,7 @@ const BaseItemsSchema = z.record(
     name: z.string().optional(),
     item_class: z.string().optional(),
     drop_level: z.number().optional(),
+    release_state: z.string().optional(),
     properties: z
       .object({ description: z.string().optional(), directions: z.string().optional() })
       .optional(),
@@ -60,6 +61,10 @@ async function main(): Promise<void> {
     // Currency, omens, essences and runes all describe themselves this way;
     // gear does not, so the presence of a description is the filter.
     if (item.item_class === undefined) continue;
+    // Legacy and unreleased items are in the data but are not what a player can
+    // craft with in the live league, so they are dropped at the source rather
+    // than reaching the advice.
+    if (item.release_state !== undefined && item.release_state !== 'released') continue;
 
     entries.push({
       name: item.name,

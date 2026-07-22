@@ -50,7 +50,7 @@ export function PoolList({
   }, [options, present, query, hideTaken]);
 
   return (
-    <section className="flex min-h-0 flex-col rounded-lg border border-line bg-surface">
+    <section className="flex flex-col rounded-lg border border-line bg-surface">
       <header className="flex flex-col gap-2 border-b border-line p-3">
         <div className="flex items-baseline justify-between">
           <h3 className="text-[12px] font-medium">{title}</h3>
@@ -87,7 +87,9 @@ export function PoolList({
         </div>
       </header>
 
-      <ul className="min-h-0 flex-1 divide-y divide-line overflow-y-auto">
+      {/* A generous cap so many modifiers show at once; the page scrolls for
+          the rest, and a very long pool scrolls within this box. */}
+      <ul className="max-h-[26rem] divide-y divide-line overflow-y-auto">
         {visible.length === 0 && (
           <li className="px-3 py-6 text-center text-[12px] text-ink-dim">
             {options.length === 0 ? 'No data for this base.' : 'Nothing matches.'}

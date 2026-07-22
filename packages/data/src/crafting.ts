@@ -82,18 +82,99 @@ const CORE_ORBS = [
   'Fracturing Orb',
 ] as const;
 
-export function currencyEffectsPrompt(dataset: CurrencyEffectDataset): string {
-  const byName = new Map(dataset.entries.map((entry) => [entry.name, entry.description]));
-  const lines: string[] = [];
+const flat = (text: string): string => text.replace(/\s+/g, ' ').trim();
 
-  for (const name of CORE_ORBS) {
-    const description = byName.get(name);
-    // One-line descriptions only: the multi-line ones (Hinekora's Lock) explain
-    // a mechanic, not an effect, and belong in prose rather than a reference row.
-    if (description && !description.includes('\n')) lines.push(`- **${name}**: ${description}`);
+/**
+ * A currency is relevant to crafting an equipment item when its effect touches a
+ * modifier, rarity, quality, socket or corruption — and is *not* about maps,
+ * the atlas, tablets, waystones, strongboxes, beasts or league consumables,
+ * which do real things to other systems but nothing to the item on the bench.
+ */
+const CRAFTING_EFFECT = /\b(modifier|rarity|quality|socket|corrupt|reforge|implicit|fracture)/i;
+const NOT_GEAR =
+  /\b(map|atlas|tablet|waystone|strongbox|beast|breach|voidstone|sextant|cartographer|logbook|tower|precursor|scarab|kirac|expedition)/i;
+
+/**
+ * Large families of near-identical currencies, collapsed to one line each.
+ *
+ * The catalogue holds dozens of Catalysts, Fossils and influence orbs that
+ * differ only by which tag they touch. Listing every one would bloat the prompt
+ * for no gain — the model needs to know the family exists and how it is named,
+ * not to read the same sentence twenty times. Each family is summarised with its
+ * member count so the model still knows the breadth.
+ */
+const FAMILIES: readonly { readonly label: string; readonly test: RegExp; readonly summary: string }[] = [
+  { label: 'Catalysts', test: /Catalyst$/, summary: 'add tag-specific quality to a ring, amulet or jewel (one per damage/defence type)' },
+  { label: 'Fossils', test: /Fossil$/, summary: 'bias the modifier pool toward or away from a tag, socketed in a resonator' },
+  { label: 'Eldritch Embers and Ichors', test: /Eldritch (Ember|Ichor)$/, summary: 'add a Searing Exarch or Eater of Worlds implicit to armour' },
+  { label: 'Influence Exalted Orbs', test: /^(Crusader's|Hunter's|Redeemer's|Warlord's) Exalted Orb$/, summary: 'add an influence and a new influenced modifier to a rare item' },
+  { label: 'Orbs of Sacrifice', test: /Orb of Sacrifice$/, summary: 'upgrade a Corruption Enchantment and remove a random modifier' },
+  { label: 'Fluxes', test: /Flux$/, summary: 'transform all resistances of two elements into a third' },
+  { label: "Jeweller's Orbs", test: /Jeweller's Orb$/, summary: "set a Skill Gem's support socket count" },
+  { label: 'Regrading Lenses', test: /Regrading Lens$/, summary: 'reroll the quality type of a skill or support gem' },
+];
+
+export function currencyEffectsPrompt(dataset: CurrencyEffectDataset): string {
+  const byName = new Map(dataset.entries.map((entry) => [entry.name, flat(entry.description)]));
+  const sections: string[] = [];
+
+  // The everyday orbs, in the order a plan reaches for them.
+  const core = CORE_ORBS.filter((name) => byName.has(name)).map(
+    (name) => `- **${name}**: ${byName.get(name)}`,
+  );
+  if (core.length > 0) sections.push(`Core orbs:\n${core.join('\n')}`);
+
+  // Everything else that acts on an equipment item. Family members are counted
+  // and summarised; the rest are listed individually, deduplicated by effect.
+  const familyCounts = new Map<number, number>();
+  const seenEffect = new Set<string>();
+  const others: string[] = [];
+
+  for (const entry of dataset.entries) {
+    if (entry.itemClass !== 'StackableCurrency') continue;
+    if (CORE_ORBS.includes(entry.name as (typeof CORE_ORBS)[number])) continue;
+    if (/^\[|DNT/.test(entry.name)) continue; // internal / do-not-translate rows
+    if (/^Essence of/.test(entry.name)) continue; // grouped separately below
+
+    const familyIndex = FAMILIES.findIndex((family) => family.test.test(entry.name));
+    if (familyIndex >= 0) {
+      familyCounts.set(familyIndex, (familyCounts.get(familyIndex) ?? 0) + 1);
+      continue;
+    }
+
+    const description = byName.get(entry.name) ?? '';
+    if (!CRAFTING_EFFECT.test(description) || NOT_GEAR.test(description)) continue;
+    if (seenEffect.has(description)) continue;
+    seenEffect.add(description);
+    others.push(`- **${entry.name}**: ${description}`);
   }
 
-  return lines.join('\n');
+  if (others.length > 0) {
+    sections.push(`Other item currencies (one per distinct effect):\n${others.join('\n')}`);
+  }
+
+  const families = [...familyCounts.entries()].flatMap(([index, count]) => {
+    const family = FAMILIES[index];
+    return family ? [`- **${family.label}** (${count}): ${family.summary}`] : [];
+  });
+  if (families.length > 0) sections.push(`Currency families:\n${families.join('\n')}`);
+
+  // Essences: the game's data describes them all identically ("a guaranteed
+  // modifier") without naming which modifier each guarantees, so they are listed
+  // as a family with that honest caveat rather than with invented specifics.
+  const essences = dataset.entries
+    .filter((entry) => /^Essence of/.test(entry.name))
+    .map((entry) => entry.name.replace(/^Essence of /, ''));
+  if (essences.length > 0) {
+    sections.push(
+      `Essences (${essences.length}): each guarantees a specific modifier when it upgrades a ` +
+        `Magic item to Rare, or (the corrupted/perfect variants) swaps one on a Rare. The game ` +
+        `data does not expose which modifier each name guarantees, so name the essence family and ` +
+        `say the player should confirm the exact modifier in game: ${essences.join(', ')}`,
+    );
+  }
+
+  return sections.join('\n\n');
 }
 
 /**

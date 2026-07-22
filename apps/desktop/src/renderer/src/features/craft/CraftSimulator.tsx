@@ -76,6 +76,11 @@ export function CraftSimulator({
         <Target size={14} className="text-accent" />
         <h2 className="text-[12px] font-medium">Simulate a currency sequence</h2>
       </div>
+      <p className="-mt-2 text-[10px] leading-relaxed text-ink-dim">
+        Omens that restrict a currency to one side or repeat it are computed here. Others — Whittling,
+        Homogenising, Catalysing, essences, fossils — are real and the AI Craft Advisor plans with
+        them, but their odds are not simulated. Ask the advisor for those.
+      </p>
 
       {/* Goal picker */}
       <div className="flex flex-col gap-2">

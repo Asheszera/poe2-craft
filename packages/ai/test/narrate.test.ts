@@ -269,9 +269,12 @@ Item Level: 69
 
   it('stays within a sane prompt size', () => {
     const prompt = buildCraftPrompt(requestFor(RAW));
-    // Roughly 4 characters per token: the possibility space and the currency
-    // catalogue are worth their cost, but they must not crowd out the item.
-    expect(prompt.length).toBeLessThan(24_000);
+    // Roughly 4 characters per token, so this is ~7k tokens: the possibility
+    // space, the full currency toolset (orbs, families, essences) and the omen
+    // list are worth their cost, but they must not crowd out the item. The
+    // guard earns its keep — it caught a 34k first draft and forced the large
+    // currency families to be summarised rather than listed member by member.
+    expect(prompt.length).toBeLessThan(28_000);
   });
 
   it("carries the player's intent for this item into the prompt", () => {

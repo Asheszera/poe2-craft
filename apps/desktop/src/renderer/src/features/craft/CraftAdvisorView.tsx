@@ -58,7 +58,9 @@ export function CraftAdvisorView(): React.JSX.Element {
   const unclassified = affixes.length - prefixes.length - suffixes.length;
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-4">
+    // Grows with its content and scrolls through the page, rather than pinning
+    // to the viewport and squeezing the pool lists into a single visible row.
+    <div className="flex flex-col gap-4">
       <div>
         <h1 className="text-[15px] font-semibold">Craft Advisor</h1>
         <p className="mt-1 text-[12px] text-ink-muted">
@@ -109,7 +111,7 @@ export function CraftAdvisorView(): React.JSX.Element {
             prefixes={pool.data.prefix}
             suffixes={pool.data.suffix}
           />
-          <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-2">
+          <div className="grid gap-4 lg:grid-cols-2">
             <PoolList
               title="Prefixes this base can roll"
               options={pool.data.prefix}

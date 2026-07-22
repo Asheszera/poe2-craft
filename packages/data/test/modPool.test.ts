@@ -25,10 +25,15 @@ describe('currency effects dataset', () => {
     expect(byName.get('Exalted Orb')).toBe('Augments a Rare item with a new random modifier');
   });
 
-  it('renders the core orbs into a prompt section', () => {
+  it('renders the full gear-crafting toolset, not just the core orbs', () => {
     const prompt = currencyEffectsPrompt(currencyEffectsDataset);
     expect(prompt).toContain('**Chaos Orb**');
     expect(prompt).toContain('**Exalted Orb**');
+    // The deeper toolset reaches the model too, with the game's own effect text.
+    expect(prompt).toContain('**Orb of Annulment**');
+    expect(prompt).toMatch(/Essences \(\d+\)/);
+    // Map, atlas and league currencies do not belong in item-crafting advice.
+    expect(prompt).not.toMatch(/waystone|Voidstone|Cartographer/i);
   });
 
   it('extracts the gear-crafting omens, effect text intact', () => {
