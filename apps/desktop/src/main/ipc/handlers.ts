@@ -7,7 +7,8 @@ import {
   type AIProvider,
   type NarrativeResponse,
 } from '@poe2/ai';
-import { defaultModPool } from '@poe2/data';
+import { currencyEffectsDataset, defaultModPool } from '@poe2/data';
+import { modelledCurrencies, runSimulation, goals } from '@poe2/craft';
 import { canonicalTemplate } from '@poe2/shared';
 import type { PriceTable } from '@poe2/prices';
 import { appError, err, type Result } from '@poe2/shared';
@@ -191,6 +192,35 @@ export const createHandlers = ({
       suffix: options.suffix,
       chanceBasis: options.chanceBasis,
       present,
+    };
+  },
+
+  'craft:currencies': () => {
+    const effects = new Map(currencyEffectsDataset.entries.map((e) => [e.name, e.description]));
+    return modelledCurrencies().map((name) => ({
+      name,
+      description: effects.get(name) ?? '',
+    }));
+  },
+
+  'craft:simulate': ({ raw, sequence, goal }) => {
+    const analysis = analyzeText(raw);
+    if (!analysis.ok) {
+      return { goalChance: 0, goalLabel: '', weighted: true, refusedAt: 0, steps: [] };
+    }
+
+    const result = runSimulation(defaultModPool(), analysis.value.item, sequence, goal);
+    return {
+      goalChance: result.goalChance,
+      goalLabel: goals.fromSpec(goal).label,
+      weighted: result.weighted,
+      refusedAt: result.refusedAt,
+      steps: result.steps.map((step) => ({
+        currency: step.currency,
+        refusal: step.refusal,
+        goalChance: step.goalChance,
+        weighted: step.weighted,
+      })),
     };
   },
 

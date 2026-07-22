@@ -9,7 +9,7 @@ import { defineConfig, externalizeDepsPlugin } from 'electron-vite';
  * Letting `externalizeDepsPlugin` externalize them would emit a runtime
  * `require('@poe2/parser')` that resolves to a `.ts` file Electron cannot load.
  */
-const INTERNAL_PACKAGES = ['@poe2/shared', '@poe2/models', '@poe2/parser', '@poe2/data', '@poe2/rules', '@poe2/ai', '@poe2/prices'];
+const INTERNAL_PACKAGES = ['@poe2/shared', '@poe2/models', '@poe2/parser', '@poe2/data', '@poe2/rules', '@poe2/ai', '@poe2/prices', '@poe2/craft'];
 
 export default defineConfig({
   main: {

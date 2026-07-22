@@ -61,6 +61,27 @@ export const PoolOptionSchema = z.object({
 });
 export type PoolOption = z.infer<typeof PoolOptionSchema>;
 
+/**
+ * A craft goal, sent as data so the renderer never ships a predicate.
+ *
+ * Mirrors `GoalSpec` in `@poe2/craft`. Recursive, so zod needs the explicit
+ * type annotation and the getter to defer self-reference.
+ */
+export type GoalSpecShape =
+  | { kind: 'mod'; key: string; minTier?: number | undefined }
+  | { kind: 'tag'; tag: string; count?: number | undefined }
+  | { kind: 'all'; of: GoalSpecShape[] }
+  | { kind: 'any'; of: GoalSpecShape[] };
+
+export const GoalSpecSchema: z.ZodType<GoalSpecShape> = z.lazy(() =>
+  z.discriminatedUnion('kind', [
+    z.object({ kind: z.literal('mod'), key: z.string(), minTier: z.number().int().optional() }),
+    z.object({ kind: z.literal('tag'), tag: z.string(), count: z.number().int().optional() }),
+    z.object({ kind: z.literal('all'), of: z.array(GoalSpecSchema) }),
+    z.object({ kind: z.literal('any'), of: z.array(GoalSpecSchema) }),
+  ]),
+);
+
 /** `AppError` minus `cause`, which is not structured-cloneable over IPC. */
 export const SerializableErrorSchema = z.object({
   code: z.string(),
@@ -187,6 +208,55 @@ export const ipcContract = {
       chanceBasis: z.enum(['weights', 'tiers']),
       /** Templates already on the item, so the UI can mark them as taken. */
       present: z.array(z.string()),
+    }),
+  },
+
+  /**
+   * The currencies the simulator can model, with the game's own description.
+   *
+   * Static, so the renderer caches it forever. Sourced from the operation table
+   * and the effect dataset together, so the interface can only offer what the
+   * simulator actually understands — an unmodelled currency never reaches the
+   * sequence builder.
+   */
+  'craft:currencies': {
+    request: z.null(),
+    response: z.array(z.object({ name: z.string(), description: z.string() })),
+  },
+
+  /**
+   * Simulates a currency sequence and reports the chance of reaching a goal.
+   *
+   * The goal is sent as data (`GoalSpecSchema`), never as a function: the main
+   * process rebuilds the predicate, so the renderer ships no code across the
+   * boundary. Probabilities are conditional across the whole sequence — see
+   * ADR-010 — which is the entire reason this is a channel and not arithmetic
+   * the renderer could do itself.
+   */
+  'craft:simulate': {
+    request: z.object({
+      raw: z.string(),
+      /** Currency names, applied in order. */
+      sequence: z.array(z.string()),
+      goal: GoalSpecSchema,
+    }),
+    response: z.object({
+      goalChance: z.number(),
+      goalLabel: z.string(),
+      /** True when every step used the game's published weights. */
+      weighted: z.boolean(),
+      /** Index of the step that could not run, or null if the sequence ran. */
+      refusedAt: z.number().int().nullable(),
+      steps: z.array(
+        z.object({
+          currency: z.string(),
+          /** Why this step could not run, or null when it did. */
+          refusal: z.string().nullable(),
+          /** Cumulative chance the goal holds after this step. */
+          goalChance: z.number(),
+          weighted: z.boolean(),
+        }),
+      ),
     }),
   },
 

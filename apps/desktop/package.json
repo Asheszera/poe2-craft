@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@poe2/ai": "workspace:*",
+    "@poe2/craft": "workspace:*",
     "@poe2/data": "workspace:*",
     "@poe2/models": "workspace:*",
     "@poe2/parser": "workspace:*",

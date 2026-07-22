@@ -3,6 +3,7 @@ import { affixBudget, affixMods } from '@poe2/models';
 import { Hammer, Loader2, TriangleAlert } from 'lucide-react';
 import { invoke } from '@/lib/ipc';
 import { useAppStore } from '@/app/store';
+import { CraftSimulator } from './CraftSimulator';
 import { PoolList } from './PoolList';
 import { SlotBar } from './SlotBar';
 
@@ -102,22 +103,29 @@ export function CraftAdvisorView(): React.JSX.Element {
       )}
 
       {pool.data?.known && (
-        <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-2">
-          <PoolList
-            title="Prefixes this base can roll"
-            options={pool.data.prefix}
-            present={new Set(pool.data.present)}
-            itemLevel={pool.data.itemLevel}
-            chanceBasis={pool.data.chanceBasis}
+        <>
+          <CraftSimulator
+            raw={item.raw}
+            prefixes={pool.data.prefix}
+            suffixes={pool.data.suffix}
           />
-          <PoolList
-            title="Suffixes this base can roll"
-            options={pool.data.suffix}
-            present={new Set(pool.data.present)}
-            itemLevel={pool.data.itemLevel}
-            chanceBasis={pool.data.chanceBasis}
-          />
-        </div>
+          <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-2">
+            <PoolList
+              title="Prefixes this base can roll"
+              options={pool.data.prefix}
+              present={new Set(pool.data.present)}
+              itemLevel={pool.data.itemLevel}
+              chanceBasis={pool.data.chanceBasis}
+            />
+            <PoolList
+              title="Suffixes this base can roll"
+              options={pool.data.suffix}
+              present={new Set(pool.data.present)}
+              itemLevel={pool.data.itemLevel}
+              chanceBasis={pool.data.chanceBasis}
+            />
+          </div>
+        </>
       )}
     </div>
   );

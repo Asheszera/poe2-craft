@@ -27,6 +27,8 @@ export const IPC_CHANNELS = [
   'history:remove',
   'history:clear',
   'craft:pool',
+  'craft:currencies',
+  'craft:simulate',
   'build:evaluate',
 ] as const;
 
