@@ -221,6 +221,9 @@ importers:
 
   packages/prices:
     dependencies:
+      '@poe2/models':
+        specifier: workspace:*
+        version: link:../models
       '@poe2/shared':
         specifier: workspace:*
         version: link:../shared

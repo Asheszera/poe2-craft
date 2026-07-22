@@ -30,6 +30,11 @@ export const IPC_CHANNELS = [
   'craft:currencies',
   'craft:omens',
   'craft:simulate',
+  // Price check against the official trade site: propose a search from an item,
+  // run it, and open the equivalent search in a browser.
+  'trade:defaults',
+  'trade:search',
+  'trade:open',
   'build:evaluate',
   // The overlay talks back: it toggles its own click-through as the cursor
   // enters it, and opens the main window when clicked.
@@ -38,7 +43,7 @@ export const IPC_CHANNELS = [
 ] as const;
 
 /** Main → renderer, fire-and-forget. */
-export const IPC_EVENTS = ['item:captured', 'overlay:show'] as const;
+export const IPC_EVENTS = ['item:captured', 'overlay:show', 'price:update'] as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[number];
 export type IpcEvent = (typeof IPC_EVENTS)[number];

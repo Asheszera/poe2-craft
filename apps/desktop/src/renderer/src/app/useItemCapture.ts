@@ -18,11 +18,20 @@ export function useItemCapture(): void {
   useEffect(() => {
     // Read from the store lazily so the effect never re-subscribes on state
     // changes; the actions themselves are stable for the store's lifetime.
-    const { setCurrentAnalysis, setActiveView } = useAppStore.getState();
+    const { setCurrentAnalysis, setActiveView, setCurrentPrice } = useAppStore.getState();
 
-    return subscribe('item:captured', (analysis) => {
+    const stopCapture = subscribe('item:captured', (analysis) => {
       setCurrentAnalysis(analysis);
       setActiveView('analyzer');
     });
+
+    // The price lands a beat after the capture; the store keeps it for whichever
+    // view is open, so the overlay and the Price Check screen agree.
+    const stopPrice = subscribe('price:update', (update) => setCurrentPrice(update));
+
+    return () => {
+      stopCapture();
+      stopPrice();
+    };
   }, []);
 }

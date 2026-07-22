@@ -7,6 +7,7 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
+    "@poe2/models": "workspace:*",
     "@poe2/shared": "workspace:*",
     "zod": "^4.0.5"
   },

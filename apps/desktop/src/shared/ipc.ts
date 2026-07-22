@@ -5,6 +5,7 @@ import {
   ItemAnalysisSchema,
   NarrativeAnalysisSchema,
 } from '@poe2/models';
+import { TradeQuerySpecSchema, TradeResultSchema } from '@poe2/prices';
 import { z } from 'zod';
 import { SettingsPatchSchema, SettingsViewSchema } from './settings.js';
 import type { IpcChannel, IpcEvent } from './channels.js';
@@ -277,6 +278,35 @@ export const ipcContract = {
   },
 
   /**
+   * Proposes a trade search for an item, without running it.
+   *
+   * The renderer edits the returned spec (toggling modifiers, setting value
+   * bounds) before searching, so the two are separate channels: this one is
+   * pure and instant, `trade:search` is the rate-limited network call.
+   */
+  'trade:defaults': {
+    request: z.object({ raw: z.string() }),
+    response: z.object({ spec: TradeQuerySpecSchema.nullable() }),
+  },
+
+  /** Runs a (possibly edited) trade search and returns the cheapest listings. */
+  'trade:search': {
+    request: z.object({ spec: TradeQuerySpecSchema }),
+    response: resultSchema(TradeResultSchema),
+  },
+
+  /**
+   * Opens a trade-site URL in the default browser.
+   *
+   * Goes through main because only it can reach the shell, and it checks the
+   * URL points at the trade site so the renderer cannot open something else.
+   */
+  'trade:open': {
+    request: z.object({ url: z.string() }),
+    response: z.null(),
+  },
+
+  /**
    * Judges the item against the configured build.
    *
    * Its own channel, and its own score: this is a model's opinion about skills
@@ -339,6 +369,19 @@ export const ipcEvents = {
   'item:captured': ItemAnalysisSchema,
   /** Sent only to the overlay window, which renders it and hides itself. */
   'overlay:show': ItemAnalysisSchema,
+  /**
+   * A price check for the just-captured item resolved.
+   *
+   * Broadcast to every window: the overlay shows the cheapest price at a
+   * glance, and the Price Check screen seeds its editable search from `spec`
+   * without spending another request. `raw` ties it to the item on screen, so
+   * a late result never attaches to the wrong capture.
+   */
+  'price:update': z.object({
+    raw: z.string(),
+    spec: TradeQuerySpecSchema,
+    result: TradeResultSchema,
+  }),
 } as const satisfies Record<IpcEvent, z.ZodTypeAny>;
 
 export type IpcEventPayload<E extends IpcEvent> = z.infer<(typeof ipcEvents)[E]>;

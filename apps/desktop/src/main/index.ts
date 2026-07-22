@@ -13,8 +13,9 @@ import { SettingsStore } from './settings/store.js';
 import { OverlayWindow } from './overlay/window.js';
 import { HotkeyRegistry } from './hotkey/registry.js';
 import { defaultKeySender } from './hotkey/keySender.js';
+import { runTradeSearch, specForItem, worthPricing } from './trade/priceCheck.js';
 import type { ItemAnalysis } from '@poe2/models';
-import type { IpcEventPayload } from '../shared/ipc.js';
+import type { IpcEvent, IpcEventPayload } from '../shared/ipc.js';
 
 /**
  * Set before anything reads a user path.
@@ -123,10 +124,32 @@ function showOverlay(analysis: ItemAnalysis): void {
 }
 
 /** Pushes an event to every open window. */
-function broadcast<E extends 'item:captured'>(event: E, payload: IpcEventPayload<E>): void {
+function broadcast<E extends IpcEvent>(event: E, payload: IpcEventPayload<E>): void {
   for (const window of BrowserWindow.getAllWindows()) {
     window.webContents.send(event, payload);
   }
+}
+
+/**
+ * Prices the captured item against the trade site, then tells every window.
+ *
+ * Runs only when the player asked for it (the setting) and the item is worth
+ * pricing — a currency stack or a white base is not. Failures are swallowed on
+ * purpose: a rate limit or an offline moment must never interrupt the capture
+ * the player actually wanted, and the Price Check screen can always retry by
+ * hand. The result carries the item's raw text so a late answer attaches to the
+ * right item and not whatever was copied after it.
+ */
+async function autoPriceCheck(analysis: ItemAnalysis): Promise<void> {
+  const settings = overlaySettings?.settings;
+  if (!settings?.priceCheckOnCapture) return;
+  if (!worthPricing(analysis.item)) return;
+
+  const spec = specForItem(analysis.item, settings.league);
+  const result = await runTradeSearch(spec);
+  if (!result.ok) return;
+
+  broadcast('price:update', { raw: analysis.item.raw, spec, result: result.value });
 }
 
 /**
@@ -171,6 +194,9 @@ const watcher = new ClipboardWatcher({
     }
     broadcast('item:captured', result.value);
     showOverlay(result.value);
+    // Fire-and-forget: the price lands a moment later via `price:update` and
+    // must not hold up the capture the player is waiting on.
+    void autoPriceCheck(result.value);
   },
 });
 

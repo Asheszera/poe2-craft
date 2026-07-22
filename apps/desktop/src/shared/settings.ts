@@ -62,6 +62,16 @@ const FIELDS = {
   overlayCorner: z.enum(['top-left', 'top-right', 'bottom-left', 'bottom-right']),
   overlayDurationMs: z.number().int().min(1000).max(60_000),
 
+  /**
+   * Looks the captured item up on the official trade site as it is copied.
+   *
+   * The one setting in this app that reaches the network unprompted, so it is a
+   * setting: a single search (two rate-limited requests) per capture, never the
+   * item itself, only a query built from its modifiers. Off by intent leaves
+   * the price check manual, on the Price Check screen.
+   */
+  priceCheckOnCapture: z.boolean(),
+
   // --- capture -------------------------------------------------------------
   clipboardWatch: z.boolean(),
   /**
@@ -95,6 +105,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   overlayEnabled: true,
   overlayCorner: 'top-right',
   overlayDurationMs: 8000,
+  priceCheckOnCapture: true,
   clipboardWatch: true,
   hotkeyEnabled: false,
   hotkey: 'F8',

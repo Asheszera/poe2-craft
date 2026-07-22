@@ -1,7 +1,15 @@
 import { useEffect, useState } from 'react';
 import type { ItemAnalysis, Rarity } from '@poe2/models';
 import { affixBudget, affixMods } from '@poe2/models';
+import type { TradePrice } from '@poe2/prices';
+import { Tag } from 'lucide-react';
 import { invoke, subscribe } from '@/lib/ipc';
+
+/** The cheapest listing and how many the search found, for the current item. */
+interface QuickPrice {
+  low: TradePrice | null;
+  total: number;
+}
 
 const RARITY_TEXT: Record<Rarity, string> = {
   Normal: 'text-rarity-normal',
@@ -29,8 +37,32 @@ function scoreTone(score: number): string {
  */
 export function OverlayApp(): React.JSX.Element | null {
   const [analysis, setAnalysis] = useState<ItemAnalysis | null>(null);
+  const [price, setPrice] = useState<QuickPrice | null>(null);
 
-  useEffect(() => subscribe('overlay:show', setAnalysis), []);
+  useEffect(
+    () =>
+      subscribe('overlay:show', (next) => {
+        setAnalysis(next);
+        // A fresh capture clears the last item's price until its own lands.
+        setPrice(null);
+      }),
+    [],
+  );
+
+  // The price arrives a moment after the card. Keyed by raw text so a late
+  // result for the previous item never shows against the current one.
+  useEffect(
+    () =>
+      subscribe('price:update', (update) => {
+        setAnalysis((current) => {
+          if (current && update.raw === current.item.raw) {
+            setPrice({ low: update.result.low, total: update.result.total });
+          }
+          return current;
+        });
+      }),
+    [],
+  );
 
   if (!analysis) return null;
 
@@ -97,6 +129,23 @@ export function OverlayApp(): React.JSX.Element | null {
         {deterministic.weaknesses[0] && (
           <div className="mt-2 truncate text-[11px] text-amber-200/70">
             {deterministic.weaknesses[0]}
+          </div>
+        )}
+
+        {price && (
+          <div className="mt-2 flex items-center gap-1.5 text-[11px]">
+            <Tag size={11} className="text-accent" />
+            {price.low ? (
+              <span className="text-ink">
+                from{' '}
+                <span className="font-semibold text-accent">
+                  {price.low.amount} {price.low.currency}
+                </span>
+                <span className="text-ink-dim"> · {price.total} listed</span>
+              </span>
+            ) : (
+              <span className="text-ink-dim">no listings found</span>
+            )}
           </div>
         )}
 

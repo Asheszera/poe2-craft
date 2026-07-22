@@ -417,6 +417,29 @@ export function SettingsView(): React.JSX.Element {
         )}
       </section>
 
+      <section className="flex flex-col gap-4 rounded-lg border border-line bg-surface p-5">
+        <div>
+          <h2 className="text-[12px] font-medium">Price check</h2>
+          <p className="mt-1 text-[11px] text-ink-dim">
+            Looks the item up on the official trade site as you copy it, and shows the cheapest price
+            on the overlay and the Price Check screen. This is the one thing the app sends to the
+            network on its own — a single search per capture, never the item itself, only a query
+            built from its modifiers. It respects the trade site’s rate limit. Turn it off to keep
+            the price check manual.
+          </p>
+        </div>
+
+        <label className="flex items-center gap-2 text-[12px] text-ink">
+          <input
+            type="checkbox"
+            checked={data.priceCheckOnCapture}
+            onChange={(e) => patch({ priceCheckOnCapture: e.target.checked })}
+            className="size-3.5 accent-accent"
+          />
+          Check prices on capture
+        </label>
+      </section>
+
       <PriceSettings prices={data.currencyPrices} onChange={(p) => patch({ currencyPrices: p })} />
 
       {failure && (

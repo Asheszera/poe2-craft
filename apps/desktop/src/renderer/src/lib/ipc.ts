@@ -58,6 +58,9 @@ export function subscribe<E extends IpcEvent>(
       console.error(`[ipc] malformed payload on "${event}"`, parsed.error);
       return;
     }
-    listener(parsed.data);
+    // `ipcEvents[event]` is the union of every event schema for a generic `E`,
+    // so its parsed output cannot be narrowed back to this event's payload by
+    // inference. The runtime validation just above is the real guarantee.
+    listener(parsed.data as IpcEventPayload<E>);
   });
 }

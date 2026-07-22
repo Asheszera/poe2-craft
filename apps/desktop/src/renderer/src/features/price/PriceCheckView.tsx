@@ -5,6 +5,7 @@ import { REFERENCE_CURRENCY } from '@poe2/prices';
 import { Check, Coins, Loader2, X } from 'lucide-react';
 import { invoke } from '@/lib/ipc';
 import { useAppStore } from '@/app/store';
+import { LiveMarketSearch } from './LiveMarketSearch';
 
 const inputClass =
   'rounded-md border border-line bg-surface-2 px-2 py-1 text-[12px] text-ink outline-none placeholder:text-ink-dim focus:border-accent/50';
@@ -72,13 +73,13 @@ function SaleEditor({
 }
 
 /**
- * What items actually sold for.
+ * Pricing, from two angles.
  *
- * Not a price lookup, and deliberately so: no public feed serves PoE2 item
- * prices in a way this app may rely on, and a screen that guessed at values
- * would be dressing invention as data. What a real buyer paid is the one price
- * signal that is unarguable — so the app records that instead, and the totals
- * are built from it.
+ * The top is a live check of the official trade site for the item on screen —
+ * the market's own asking prices, editable modifier by modifier. Below it is
+ * the ledger of what items *actually sold for*, which no lookup can tell you:
+ * the asking price is what sellers hope for, the sold price is what a buyer
+ * paid, and both are worth having side by side. Neither invents a number.
  */
 export function PriceCheckView(): React.JSX.Element {
   const queryClient = useQueryClient();
@@ -121,9 +122,18 @@ export function PriceCheckView(): React.JSX.Element {
       <div>
         <h1 className="text-[15px] font-semibold">Price Check</h1>
         <p className="mt-1 text-[12px] text-ink-muted">
-          Record what your items sold for. There is no public price feed for PoE2 that this app can
-          rely on, so what a buyer actually paid is the only price data here — and it is better than
-          any estimate.
+          The live asking price for the item you copied, and the ledger of what your items actually
+          sold for.
+        </p>
+      </div>
+
+      <LiveMarketSearch />
+
+      <div>
+        <h2 className="text-[13px] font-semibold">Sales ledger</h2>
+        <p className="mt-1 text-[12px] text-ink-muted">
+          Record what your items sold for — what a buyer actually paid is the one price signal no
+          lookup can give you.
         </p>
       </div>
 

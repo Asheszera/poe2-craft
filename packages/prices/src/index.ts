@@ -25,3 +25,29 @@ export {
 } from './types.js';
 export { HttpPriceSource, ManualPriceSource } from './sources.js';
 export { pricePrompt, costOfPlan } from './advice.js';
+
+/**
+ * The item price check — a live search of the official PoE2 trade site, kept in
+ * this package because it is the other half of "what is this worth". Distinct
+ * from the currency table above: this values items, from the market, at the
+ * cost of a rate-limited network call the caller opts into.
+ */
+export {
+  TRADE_API,
+  TRADE_REALM,
+  TRADE_SITE,
+  TradeQuerySpecSchema,
+  TradeStatFilterSchema,
+  TradeListingSchema,
+  TradePriceSchema,
+  TradeResultSchema,
+  TradeRaritySchema,
+  type TradeQuerySpec,
+  type TradeStatFilter,
+  type TradeListing,
+  type TradePrice,
+  type TradeResult,
+  type TradeRarity,
+} from './trade/types.js';
+export { defaultSpecFor, buildQueryBody, browseUrl } from './trade/query.js';
+export { TradeClient, type TradeClientOptions } from './trade/client.js';

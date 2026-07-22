@@ -1,4 +1,4 @@
-import { app, clipboard } from 'electron';
+import { app, clipboard, shell } from 'electron';
 import type { AnalysisContext, ItemAnalysis } from '@poe2/models';
 import {
   createProvider,
@@ -10,9 +10,10 @@ import {
 import { defaultModPool } from '@poe2/data';
 import { modelledCurrencies, modelledOmens, runSimulation, goals } from '@poe2/craft';
 import { canonicalTemplate } from '@poe2/shared';
-import type { PriceTable } from '@poe2/prices';
+import { type PriceTable, TRADE_SITE } from '@poe2/prices';
 import { appError, err, type Result } from '@poe2/shared';
 import { analyzeText } from '../analysis/pipeline.js';
+import { runTradeSearch, specForItem } from '../trade/priceCheck.js';
 import type { ClipboardWatcher } from '../clipboard/watcher.js';
 import type { HistoryRepository } from '../history/repository.js';
 import type { HotkeyRegistry } from '../hotkey/registry.js';
@@ -132,14 +133,14 @@ async function narrateWith(
 }
 
 /**
- * The player's own price list, as a table.
+ * The player's own currency price list, as a table.
  *
- * Built from settings rather than fetched: no public endpoint serves PoE2
- * currency prices in a way this app may rely on (the trade API needs an
- * authenticated session and rate-limits automated search; poe.ninja serves its
- * browser application, not a documented feed). Whatever the player types is
- * therefore the most trustworthy source available — and it is traceable, which
- * a scraped number would not be.
+ * Built from settings rather than fetched. The trade site's read endpoints are
+ * open (the price check uses them — see `trade/priceCheck.ts`), but they search
+ * *item listings*, not a currency exchange feed, and poe.ninja serves its
+ * browser application rather than a documented one. So for the reference rates
+ * this table needs, whatever the player types is the most trustworthy source —
+ * and it is traceable, which a scraped number would not be.
  */
 function priceTableFrom(settings: SettingsStore): PriceTable {
   const s = settings.settings;
@@ -209,6 +210,21 @@ export const createHandlers = ({
       chanceBasis: options.chanceBasis,
       present,
     };
+  },
+
+  'trade:defaults': ({ raw }) => {
+    const analysis = analyzeText(raw);
+    if (!analysis.ok) return { spec: null };
+    return { spec: specForItem(analysis.value.item, settings.settings.league) };
+  },
+
+  'trade:search': async ({ spec }) => serializeResult(await runTradeSearch(spec)),
+
+  'trade:open': ({ url }) => {
+    // Only the trade site, and only https: the renderer hands over a URL and
+    // must not be able to make main open anything it likes.
+    if (url.startsWith(TRADE_SITE)) void shell.openExternal(url);
+    return null;
   },
 
   'craft:currencies': () => modelledCurrencies().map((c) => ({ ...c })),
