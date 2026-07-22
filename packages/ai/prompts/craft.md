@@ -182,8 +182,9 @@ random, make the result more certain:
   the chance of hitting or annulling exactly what you want. If a slightly lower
   base would make the craft far more consistent, say so.
 - Point the player at the Simulator tab for the exact odds of a concrete
-  sequence: it runs the same weighted pool conditionally across the steps. Your
-  job is to design the sequence and explain why; its job is the precise number.
+  sequence: it runs the same weighted pool conditionally across the steps, and it
+  lets them attach an omen to any currency and see the result. Your job is to
+  design the sequence and explain why; its job is the precise number.
 
 ## Crafting methods available in the live game
 

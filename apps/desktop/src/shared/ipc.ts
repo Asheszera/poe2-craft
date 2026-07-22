@@ -221,13 +221,20 @@ export const ipcContract = {
    */
   'craft:currencies': {
     request: z.null(),
+    response: z.array(z.object({ name: z.string(), description: z.string() })),
+  },
+
+  /**
+   * The omens the simulator can compute, each tied to the currency it modifies.
+   *
+   * Sent separately from currencies so the interface can let the player pair any
+   * currency with any omen; `appliesTo` is what the interface uses to show which
+   * pairings do something.
+   */
+  'craft:omens': {
+    request: z.null(),
     response: z.array(
-      z.object({
-        name: z.string(),
-        description: z.string(),
-        /** True for omen-modified combinations, grouped apart in the interface. */
-        isOmenCraft: z.boolean(),
-      }),
+      z.object({ name: z.string(), description: z.string(), appliesTo: z.string() }),
     ),
   },
 
@@ -243,8 +250,10 @@ export const ipcContract = {
   'craft:simulate': {
     request: z.object({
       raw: z.string(),
-      /** Currency names, applied in order. */
-      sequence: z.array(z.string()),
+      /** Steps applied in order: a currency, optionally paired with an omen. */
+      sequence: z.array(
+        z.object({ currency: z.string(), omen: z.string().nullable().optional() }),
+      ),
       goal: GoalSpecSchema,
     }),
     response: z.object({

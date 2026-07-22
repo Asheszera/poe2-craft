@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowRight, Loader2, Plus, Target, X } from 'lucide-react';
+import { Loader2, Plus, Target, X } from 'lucide-react';
 import type { GoalSpecShape, PoolOption } from '@shared/ipc';
 import { invoke } from '@/lib/ipc';
 
@@ -24,11 +24,18 @@ export function CraftSimulator({
 }): React.JSX.Element {
   const [goalKeys, setGoalKeys] = useState<string[]>([]);
   const [mode, setMode] = useState<'all' | 'any'>('all');
-  const [sequence, setSequence] = useState<string[]>([]);
+  /** Each step is a currency, with an omen the player can attach or clear. */
+  const [sequence, setSequence] = useState<{ currency: string; omen: string | null }[]>([]);
 
   const currencies = useQuery({
     queryKey: ['craft-currencies'],
     queryFn: () => invoke('craft:currencies', null),
+    staleTime: Infinity,
+  });
+
+  const omens = useQuery({
+    queryKey: ['craft-omens'],
+    queryFn: () => invoke('craft:omens', null),
     staleTime: Infinity,
   });
 
@@ -128,85 +135,93 @@ export function CraftSimulator({
         )}
       </div>
 
-      {/* Sequence builder */}
+      {/* Sequence builder — add a currency, then optionally attach an omen. */}
       <div className="flex flex-col gap-2">
-        <span className="text-[11px] text-ink-dim">Currencies, applied in order</span>
+        <span className="text-[11px] text-ink-dim">Add currencies, applied in order</span>
 
         {currencies.isLoading ? (
           <Loader2 size={14} className="animate-spin text-ink-dim" />
         ) : (
-          <div className="flex flex-col gap-2">
-            <div className="flex flex-wrap gap-1.5">
-              {currencies.data
-                ?.filter((c) => !c.isOmenCraft)
-                .map((currency) => (
-                  <button
-                    key={currency.name}
-                    type="button"
-                    onClick={() => setSequence((s) => [...s, currency.name])}
-                    title={currency.description}
-                    className="flex items-center gap-1 rounded-md border border-line bg-surface-2 px-2 py-1 text-[11px] text-ink-muted transition-colors hover:border-accent/40 hover:text-ink"
-                  >
-                    <Plus size={10} />
-                    {currency.name}
-                  </button>
-                ))}
-            </div>
-
-            {/*
-              Omen-modified crafts are the advanced half: a currency restricted
-              to one affix side, or doubled. Grouped apart because they are how a
-              plan gains control, not just another orb.
-            */}
-            <details className="text-[11px]">
-              <summary className="cursor-pointer text-ink-dim hover:text-ink">
-                with an omen (restricts a currency to one side, or doubles it)
-              </summary>
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {currencies.data
-                  ?.filter((c) => c.isOmenCraft)
-                  .map((currency) => (
-                    <button
-                      key={currency.name}
-                      type="button"
-                      onClick={() => setSequence((s) => [...s, currency.name])}
-                      title={currency.description}
-                      className="flex items-center gap-1 rounded-md border border-accent/25 bg-accent/5 px-2 py-1 text-[11px] text-ink-muted transition-colors hover:border-accent/50 hover:text-ink"
-                    >
-                      <Plus size={10} />
-                      {currency.name.replace(' + Omen of ', ' + ')}
-                    </button>
-                  ))}
-              </div>
-            </details>
+          <div className="flex flex-wrap gap-1.5">
+            {currencies.data?.map((currency) => (
+              <button
+                key={currency.name}
+                type="button"
+                onClick={() => setSequence((s) => [...s, { currency: currency.name, omen: null }])}
+                title={currency.description}
+                className="flex items-center gap-1 rounded-md border border-line bg-surface-2 px-2 py-1 text-[11px] text-ink-muted transition-colors hover:border-accent/40 hover:text-ink"
+              >
+                <Plus size={10} />
+                {currency.name}
+              </button>
+            ))}
           </div>
         )}
 
         {sequence.length > 0 && (
-          <div className="mt-1 flex flex-wrap items-center gap-1.5 rounded-md border border-line bg-surface-2 p-2">
-            {sequence.map((name, index) => (
-              <span key={`${name}-${index}`} className="flex items-center gap-1.5">
-                {index > 0 && <ArrowRight size={11} className="text-ink-dim" />}
-                <span className="flex items-center gap-1 rounded bg-surface-3 px-2 py-1 text-[11px] text-ink">
-                  {name}
+          <ol className="mt-1 flex flex-col gap-1.5 rounded-md border border-line bg-surface-2 p-2">
+            {sequence.map((step, index) => {
+              // Only omens whose effect names this currency do anything to it.
+              // Others are shown too, so the player has the freedom to try — the
+              // simulation reports the pairing as no-effect if it does not fit.
+              const compatible = (omens.data ?? []).filter((o) => o.appliesTo === step.currency);
+              const others = (omens.data ?? []).filter((o) => o.appliesTo !== step.currency);
+              const setOmen = (omen: string | null): void =>
+                setSequence((s) => s.map((v, i) => (i === index ? { ...v, omen } : v)));
+
+              return (
+                <li key={index} className="flex flex-wrap items-center gap-2 text-[11px]">
+                  <span className="font-mono text-ink-dim">{index + 1}.</span>
+                  <span className="rounded bg-surface-3 px-2 py-1 text-ink">{step.currency}</span>
+
+                  <span className="text-ink-dim">with</span>
+                  <select
+                    value={step.omen ?? ''}
+                    onChange={(e) => setOmen(e.target.value === '' ? null : e.target.value)}
+                    className="rounded border border-line bg-surface px-1.5 py-1 text-[11px] text-ink outline-none focus:border-accent/50"
+                  >
+                    <option value="">no omen</option>
+                    {compatible.length > 0 && (
+                      <optgroup label="affects this currency">
+                        {compatible.map((o) => (
+                          <option key={o.name} value={o.name} title={o.description}>
+                            {o.name}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
+                    {others.length > 0 && (
+                      <optgroup label="no effect here">
+                        {others.map((o) => (
+                          <option key={o.name} value={o.name} title={o.description}>
+                            {o.name}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
+                  </select>
+
                   <button
                     type="button"
                     onClick={() => setSequence((s) => s.filter((_, i) => i !== index))}
                     className="text-ink-dim hover:text-red-300"
+                    title="Remove step"
                   >
-                    <X size={10} />
+                    <X size={11} />
                   </button>
-                </span>
-              </span>
-            ))}
-            <button
-              type="button"
-              onClick={() => setSequence([])}
-              className="ml-auto text-[10px] text-ink-dim hover:text-ink"
-            >
-              clear
-            </button>
-          </div>
+                </li>
+              );
+            })}
+            <li>
+              <button
+                type="button"
+                onClick={() => setSequence([])}
+                className="text-[10px] text-ink-dim hover:text-ink"
+              >
+                clear all
+              </button>
+            </li>
+          </ol>
         )}
       </div>
 

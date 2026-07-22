@@ -122,86 +122,142 @@ export const CURRENCIES: readonly CurrencyDefinition[] = [
   },
 ];
 
+export const currencyByName = new Map(CURRENCIES.map((c) => [c.name, c]));
+
 /**
- * Currencies as modified by an omen, for the omens whose effect maps cleanly
- * onto the primitives this simulator already has.
+ * An omen: a consumable that changes how *one* currency behaves.
  *
- * These are the advanced combinations a veteran reaches for: forcing an Exalted
- * Orb onto one side, restricting which side an Annul can hit, adding two
- * modifiers at once. Each is grounded in the game's own omen text (pinned by a
- * test), and each is *only* here because its effect is a side filter or a
- * repeat count — things the state machine can compute exactly.
+ * Modelled as a separate thing the player attaches to a currency, not as a
+ * pre-baked "Exalted + Omen" combination, so the interface can let them pair any
+ * currency with any omen and the simulator answers whether that pairing does
+ * anything — a Dextral Exaltation omen on an Annulment is a real mistake a
+ * player can make, and the honest response is to say it has no effect here.
  *
- * Deliberately absent: omens whose effect this simulator cannot compute without
- * data it does not have. "Same type as an existing modifier" (Homogenising),
+ * `appliesTo` names the currency the omen modifies, taken from the omen's own
+ * text ("your next Exalted Orb…"). `modify` rewrites that currency's operations.
+ *
+ * Only omens whose effect maps onto the simulator's primitives — a side filter
+ * or a repeat — are here. "Same type as an existing modifier" (Homogenising),
  * "increase the chance of the corresponding type" (Catalysing) and "remove the
- * lowest level modifier" (Whittling) are real and powerful, but modelling them
- * from a one-line description would be inventing the mechanic. They reach the
- * player through the prompt's omen list, not through a fabricated probability.
+ * lowest level modifier" (Whittling) are real but not computable from a one-line
+ * description, so they are left out rather than faked. They still reach the
+ * player through the craft prompt's omen list.
  */
-export const OMEN_CURRENCIES: readonly CurrencyDefinition[] = [
+export interface Omen {
+  readonly name: string;
+  /** The omen's effect clause, verbatim from the game (pinned by a test). */
+  readonly description: string;
+  /** The exact currency name this omen affects. */
+  readonly appliesTo: string;
+  readonly modify: (steps: readonly Operation[]) => Operation[];
+}
+
+/** Adds a side restriction to every operation of one kind. */
+const restrict =
+  (kind: 'add' | 'remove', side: 'prefix' | 'suffix') =>
+  (steps: readonly Operation[]): Operation[] =>
+    steps.map((step) =>
+      step.kind === kind ? { ...step, filter: { ...step.filter, side } } : step,
+    );
+
+/** Repeats every operation of one kind, so the currency does it twice. */
+const twice =
+  (kind: 'add' | 'remove') =>
+  (steps: readonly Operation[]): Operation[] =>
+    steps.flatMap((step) => (step.kind === kind ? [step, step] : [step]));
+
+export const OMENS: readonly Omen[] = [
   {
-    name: 'Exalted Orb + Omen of Sinistral Exaltation',
+    name: 'Omen of Sinistral Exaltation',
     description: 'your next Exalted Orb will add only prefix modifiers',
-    requires: { rarity: rare, needsOpenSlot: true },
-    steps: [{ kind: 'add', filter: { side: 'prefix' } }],
+    appliesTo: 'Exalted Orb',
+    modify: restrict('add', 'prefix'),
   },
   {
-    name: 'Exalted Orb + Omen of Dextral Exaltation',
+    name: 'Omen of Dextral Exaltation',
     description: 'your next Exalted Orb will add only suffix modifiers',
-    requires: { rarity: rare, needsOpenSlot: true },
-    steps: [{ kind: 'add', filter: { side: 'suffix' } }],
+    appliesTo: 'Exalted Orb',
+    modify: restrict('add', 'suffix'),
   },
   {
-    name: 'Exalted Orb + Omen of Greater Exaltation',
+    name: 'Omen of Greater Exaltation',
     description: 'your next Exalted Orb will add two random modifiers',
-    requires: { rarity: rare, needsOpenSlot: true },
-    steps: [{ kind: 'add' }, { kind: 'add' }],
+    appliesTo: 'Exalted Orb',
+    modify: twice('add'),
   },
   {
-    name: 'Orb of Annulment + Omen of Sinistral Annulment',
+    name: 'Omen of Sinistral Annulment',
     description: 'your next Orb of Annulment will remove only prefix modifiers',
-    requires: { minMods: 1 },
-    steps: [{ kind: 'remove', filter: { side: 'prefix' } }],
+    appliesTo: 'Orb of Annulment',
+    modify: restrict('remove', 'prefix'),
   },
   {
-    name: 'Orb of Annulment + Omen of Dextral Annulment',
+    name: 'Omen of Dextral Annulment',
     description: 'your next Orb of Annulment will remove only suffix modifiers',
-    requires: { minMods: 1 },
-    steps: [{ kind: 'remove', filter: { side: 'suffix' } }],
+    appliesTo: 'Orb of Annulment',
+    modify: restrict('remove', 'suffix'),
   },
   {
-    name: 'Orb of Annulment + Omen of Greater Annulment',
+    name: 'Omen of Greater Annulment',
     description: 'your next Orb of Annulment will remove two modifiers',
-    requires: { minMods: 1 },
-    steps: [{ kind: 'remove' }, { kind: 'remove' }],
+    appliesTo: 'Orb of Annulment',
+    modify: twice('remove'),
   },
   {
-    name: 'Chaos Orb + Omen of Sinistral Erasure',
+    name: 'Omen of Sinistral Erasure',
     description: 'your next Chaos Orb will remove only prefix modifiers',
-    requires: { rarity: rare, minMods: 1 },
-    steps: [{ kind: 'remove', filter: { side: 'prefix' } }, { kind: 'add' }],
+    appliesTo: 'Chaos Orb',
+    modify: restrict('remove', 'prefix'),
   },
   {
-    name: 'Chaos Orb + Omen of Dextral Erasure',
+    name: 'Omen of Dextral Erasure',
     description: 'your next Chaos Orb will remove only suffix modifiers',
-    requires: { rarity: rare, minMods: 1 },
-    steps: [{ kind: 'remove', filter: { side: 'suffix' } }, { kind: 'add' }],
+    appliesTo: 'Chaos Orb',
+    modify: restrict('remove', 'suffix'),
   },
   {
-    name: 'Regal Orb + Omen of Sinistral Coronation',
+    name: 'Omen of Sinistral Coronation',
     description: 'your next Regal Orb will add only prefix modifiers',
-    requires: { rarity: ['Magic'] },
-    steps: [{ kind: 'setRarity', rarity: 'Rare' }, { kind: 'add', filter: { side: 'prefix' } }],
+    appliesTo: 'Regal Orb',
+    modify: restrict('add', 'prefix'),
   },
   {
-    name: 'Regal Orb + Omen of Dextral Coronation',
+    name: 'Omen of Dextral Coronation',
     description: 'your next Regal Orb will add only suffix modifiers',
-    requires: { rarity: ['Magic'] },
-    steps: [{ kind: 'setRarity', rarity: 'Rare' }, { kind: 'add', filter: { side: 'suffix' } }],
+    appliesTo: 'Regal Orb',
+    modify: restrict('add', 'suffix'),
   },
 ];
 
-export const currencyByName = new Map(
-  [...CURRENCIES, ...OMEN_CURRENCIES].map((c) => [c.name, c]),
-);
+export const omenByName = new Map(OMENS.map((o) => [o.name, o]));
+
+/** One step of a plan: a currency, optionally paired with an omen. */
+export interface CraftStep {
+  readonly currency: string;
+  readonly omen?: string | null | undefined;
+}
+
+/**
+ * Resolves a step to the operations it runs, or the reason it cannot.
+ *
+ * The omen compatibility check lives here: pairing an omen with a currency it
+ * does not name is not a crash and not a silent no-op — it is reported, so the
+ * interface can tell the player the combination does nothing.
+ */
+export function resolveStep(
+  step: CraftStep,
+):
+  | { readonly ok: true; readonly currency: CurrencyDefinition; readonly steps: readonly Operation[] }
+  | { readonly ok: false; readonly reason: string } {
+  const currency = currencyByName.get(step.currency);
+  if (!currency) return { ok: false, reason: 'currency not modelled' };
+
+  if (!step.omen) return { ok: true, currency, steps: currency.steps };
+
+  const omen = omenByName.get(step.omen);
+  if (!omen) return { ok: false, reason: 'omen not modelled' };
+  if (omen.appliesTo !== step.currency) {
+    return { ok: false, reason: `${step.omen} has no effect on ${step.currency}` };
+  }
+  return { ok: true, currency, steps: omen.modify(currency.steps) };
+}

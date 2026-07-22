@@ -1,7 +1,7 @@
 import type { ModPoolIndex } from '@poe2/data';
 import { candidateId, candidates, distribution, targets, type Candidate } from './pool.js';
-import type { CurrencyDefinition, Operation } from './operations.js';
-import { currencyByName } from './operations.js';
+import type { CraftStep, CurrencyDefinition, Operation } from './operations.js';
+import { resolveStep } from './operations.js';
 import {
   allMods,
   cleared,
@@ -35,9 +35,14 @@ export type Refusal =
   | 'no open affix slot'
   | 'item is corrupted'
   | 'nothing left in the pool'
-  | 'currency not modelled';
+  | 'currency not modelled'
+  | 'omen not modelled'
+  // The `${omen} has no effect on ${currency}` message from resolveStep also
+  // flows through this field; the union documents the fixed reasons.
+  | (string & {});
 
 export interface StepResult {
+  /** How the step reads: the currency, plus the omen when one is attached. */
   readonly currency: string;
   readonly refusal: Refusal | null;
   /** Chance the goal holds after this step, given it held nowhere before. */
@@ -201,7 +206,7 @@ function merge(branches: readonly Branch[], goal: Goal): Branch[] {
 export function simulate(
   pool: ModPoolIndex,
   initial: CraftState,
-  sequence: readonly string[],
+  sequence: readonly CraftStep[],
   goal: Goal,
 ): SimulationResult {
   let live: Branch[] = [{ state: initial, probability: 1 }];
@@ -212,12 +217,18 @@ export function simulate(
   let refusedAt: number | null = null;
   let everyStepWeighted = true;
 
-  for (const [index, name] of sequence.entries()) {
-    const currency = currencyByName.get(name);
-    if (!currency) {
+  for (const [index, step] of sequence.entries()) {
+    // How the step reads in the result, e.g. "Exalted Orb + Omen of Dextral
+    // Exaltation".
+    const label = step.omen ? `${step.currency} + ${step.omen}` : step.currency;
+
+    // Resolve the currency and any attached omen to the operations they run.
+    // An incompatible omen is reported here rather than silently ignored.
+    const resolved = resolveStep(step);
+    if (!resolved.ok) {
       steps.push({
-        currency: name,
-        refusal: 'currency not modelled',
+        currency: label,
+        refusal: resolved.reason,
         goalChance: reached,
         weighted: true,
         branches: 0,
@@ -225,13 +236,14 @@ export function simulate(
       refusedAt ??= index;
       break;
     }
+    const { currency, steps: operations } = resolved;
 
     // A step is refused only if it is impossible everywhere it could still run.
     const runnable = live.filter((branch) => checkRequirements(currency, branch.state) === null);
     if (runnable.length === 0) {
       const refusal = live[0] ? checkRequirements(currency, live[0].state) : 'nothing left in the pool';
       steps.push({
-        currency: name,
+        currency: label,
         refusal: refusal ?? 'nothing left in the pool',
         goalChance: reached,
         weighted: true,
@@ -250,7 +262,7 @@ export function simulate(
     for (const branch of runnable) {
       let inner: Branch[] = [{ state: branch.state, probability: branch.probability }];
 
-      for (const operation of currency.steps) {
+      for (const operation of operations) {
         const expanded: Branch[] = [];
         for (const current of inner) {
           const { branches, weighted } = applyOperation(pool, current.state, operation);
@@ -284,7 +296,7 @@ export function simulate(
 
     everyStepWeighted &&= stepWeighted;
     steps.push({
-      currency: name,
+      currency: label,
       refusal: null,
       goalChance: reached,
       weighted: stepWeighted,

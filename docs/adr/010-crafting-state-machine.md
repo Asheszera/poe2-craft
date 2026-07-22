@@ -63,19 +63,26 @@ item unpredictably") and essences are absent from the operation table rather
 than approximated. `simulate()` returns `currency not modelled` for them, which
 is a truthful answer, unlike an invented probability.
 
-**Omens that restrict a currency to one affix side, or repeat it, are modelled;
-the rest are not.** An Omen of Dextral Exaltation ("your next Exalted Orb will
-add only suffix modifiers") maps exactly onto the pool's existing side filter,
-so the simulator computes the real result — on Pauascale Gloves it lifts the
-chance of a specific suffix from 5.7% to 10.5%, because the roll no longer draws
-from the prefix pool. Ten such combinations are defined (side-restricting and
-doubling omens for Exalted, Annulment, Chaos and Regal), each pinned by test to
-the omen's own effect text. Omens whose effect the simulator cannot compute
-without data it lacks — "same type as an existing modifier" (Homogenising),
-"increase the chance of the corresponding type" (Catalysing), "remove the lowest
-level modifier" (Whittling) — are deliberately left out of the operation table.
-They still reach the player through the craft prompt's omen list; they are just
-never given a fabricated probability.
+**Omens are modelled as a modifier the player attaches to a currency, not as
+baked "currency + omen" combinations.** A step is `{ currency, omen? }`. This
+gives the player the freedom to pair any currency with any omen and ask what
+happens — and pairing an omen with a currency it does not name (a Dextral
+Exaltation omen on an Annulment) is a real mistake, answered honestly: the step
+is refused with "omen has no effect on this currency", never a silent no-op and
+never a crash.
+
+An omen's `appliesTo` and effect come from its own game text ("your next Exalted
+Orb will…"), and `modify` rewrites that currency's operations. Ten omens are
+modelled — the side-restricting and doubling ones for Exalted, Annulment, Chaos
+and Regal — because each maps onto the pool's side filter or a repeat. On
+Pauascale Gloves an Omen of Dextral Exaltation lifts a specific suffix from 5.7%
+to 10.5%, computed from the weighted pool because the roll no longer draws from
+the prefix side. Omens the simulator cannot compute without data it lacks —
+"same type as an existing modifier" (Homogenising), "increase the chance of the
+corresponding type" (Catalysing), "remove the lowest level modifier"
+(Whittling) — are deliberately absent from the operation table. They still reach
+the player through the craft prompt's omen list; they are just never given a
+fabricated probability.
 
 ## Consequences
 

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { defaultKnowledgeBase, defaultModPool, enrichItem } from '@poe2/data';
 import { parseItem } from '@poe2/parser';
 import type { ParsedItem } from '@poe2/models';
-import { modelledCurrencies, runSimulation } from '../src/index.js';
+import { modelledCurrencies, modelledOmens, runSimulation } from '../src/index.js';
 import type { GoalSpec } from '../src/index.js';
 
 /**
@@ -33,7 +33,7 @@ Item Level: 80
 describe('runSimulation (the IPC entry point)', () => {
   it('reaches a modifier the base can roll, with a real probability', () => {
     const goal: GoalSpec = { kind: 'mod', key: '# to dexterity' };
-    const result = runSimulation(pool, item(RARE_GLOVES), ['Exalted Orb'], goal);
+    const result = runSimulation(pool, item(RARE_GLOVES), [{ currency: 'Exalted Orb' }], goal);
 
     expect(result.goalChance).toBeGreaterThan(0);
     expect(result.goalChance).toBeLessThan(1);
@@ -43,7 +43,7 @@ describe('runSimulation (the IPC entry point)', () => {
   it('carries the item’s existing modifiers into the state', () => {
     // The glove already has life; a life goal is satisfied before any currency.
     const goal: GoalSpec = { kind: 'mod', key: '# to maximum life' };
-    const result = runSimulation(pool, item(RARE_GLOVES), ['Exalted Orb'], goal);
+    const result = runSimulation(pool, item(RARE_GLOVES), [{ currency: 'Exalted Orb' }], goal);
 
     expect(result.goalChance).toBe(1);
   });
@@ -56,29 +56,34 @@ describe('runSimulation (the IPC entry point)', () => {
         { kind: 'mod', key: '#% to fire resistance' },
       ],
     };
-    const one = runSimulation(pool, item(RARE_GLOVES), ['Exalted Orb'], goal);
+    const one = runSimulation(pool, item(RARE_GLOVES), [{ currency: 'Exalted Orb' }], goal);
     // One added modifier cannot satisfy a two-modifier goal.
     expect(one.goalChance).toBe(0);
 
     const many = runSimulation(
       pool,
       item(RARE_GLOVES),
-      ['Exalted Orb', 'Exalted Orb', 'Exalted Orb'],
+      [{ currency: 'Exalted Orb' }, { currency: 'Exalted Orb' }, { currency: 'Exalted Orb' }],
       goal,
     );
     expect(many.goalChance).toBeGreaterThan(0);
   });
 
-  it('lists only currencies it can model, with omen crafts flagged', () => {
+  it('lists only currencies it can model, omens kept separate', () => {
     const names = modelledCurrencies().map((c) => c.name);
     expect(names).toContain('Chaos Orb');
     expect(names).toContain('Exalted Orb');
     // Vaal Orb is unmodelled and must not be offered as if it were understood.
     expect(names).not.toContain('Vaal Orb');
+    // Omens are their own list now, not baked into the currency names.
+    expect(names.some((n) => n.includes('Omen'))).toBe(false);
+  });
 
-    // Omen crafts are present and marked so the interface can group them.
-    const omen = modelledCurrencies().find((c) => c.name.includes('Omen'));
-    expect(omen?.isOmenCraft).toBe(true);
-    expect(modelledCurrencies().find((c) => c.name === 'Chaos Orb')?.isOmenCraft).toBe(false);
+  it('offers omens tied to the currency each one modifies', () => {
+    const dextral = modelledOmens().find((o) => o.name === 'Omen of Dextral Exaltation');
+    expect(dextral?.appliesTo).toBe('Exalted Orb');
+    // Every omen points at a currency that exists in the modelled set.
+    const currencies = new Set(modelledCurrencies().map((c) => c.name));
+    expect(modelledOmens().every((o) => currencies.has(o.appliesTo))).toBe(true);
   });
 });

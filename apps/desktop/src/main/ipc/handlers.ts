@@ -8,7 +8,7 @@ import {
   type NarrativeResponse,
 } from '@poe2/ai';
 import { defaultModPool } from '@poe2/data';
-import { modelledCurrencies, runSimulation, goals } from '@poe2/craft';
+import { modelledCurrencies, modelledOmens, runSimulation, goals } from '@poe2/craft';
 import { canonicalTemplate } from '@poe2/shared';
 import type { PriceTable } from '@poe2/prices';
 import { appError, err, type Result } from '@poe2/shared';
@@ -196,6 +196,8 @@ export const createHandlers = ({
   },
 
   'craft:currencies': () => modelledCurrencies().map((c) => ({ ...c })),
+
+  'craft:omens': () => modelledOmens().map((o) => ({ ...o })),
 
   'craft:simulate': ({ raw, sequence, goal }) => {
     const analysis = analyzeText(raw);

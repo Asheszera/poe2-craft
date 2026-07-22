@@ -28,6 +28,7 @@ export const IPC_CHANNELS = [
   'history:clear',
   'craft:pool',
   'craft:currencies',
+  'craft:omens',
   'craft:simulate',
   'build:evaluate',
 ] as const;

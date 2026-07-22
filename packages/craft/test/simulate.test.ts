@@ -4,7 +4,7 @@ import {
   candidates,
   capacity,
   CURRENCIES,
-  OMEN_CURRENCIES,
+  OMENS,
   checkRequirements,
   currencyByName,
   goals,
@@ -14,6 +14,9 @@ import {
 } from '../src/index.js';
 
 const pool = defaultModPool();
+
+/** Terse currency-only sequence. */
+const s = (...names: string[]): { currency: string }[] => names.map((currency) => ({ currency }));
 
 /** A weighted base with a large pool, so the numbers below are real ones. */
 const gloves = (over: Partial<CraftState> = {}): CraftState => ({
@@ -50,19 +53,20 @@ describe('currency definitions', () => {
     }
   });
 
-  it('grounds each omen craft in the omen’s own effect text', () => {
+  it('grounds each omen in the omen’s own effect text, tied to a real currency', () => {
     // The omen descriptions in the dataset carry the "While this item is
-    // active…" lead-in and wrap across lines; the operation's description is the
-    // effect clause. Every omen craft must quote an effect that actually exists.
-    const omenEffects = currencyEffectsDataset.entries
-      .filter((e) => e.itemClass === 'Omen')
-      .map((e) => e.description.replace(/\s+/g, ' '));
+    // active…" lead-in and wrap across lines; the omen's `description` is the
+    // effect clause, and `appliesTo` must name a currency that exists.
+    const byName = new Map(
+      currencyEffectsDataset.entries.map((e) => [e.name, e.description.replace(/\s+/g, ' ')]),
+    );
 
-    for (const craft of OMEN_CURRENCIES) {
-      expect(
-        omenEffects.some((effect) => effect.includes(craft.description)),
-        `${craft.name}: "${craft.description}" not found in any omen`,
-      ).toBe(true);
+    for (const omen of OMENS) {
+      const source = byName.get(omen.name);
+      expect(source, `${omen.name} missing from the dataset`).toBeDefined();
+      expect(source, omen.name).toContain(omen.description);
+      // The currency it modifies must be one the simulator knows.
+      expect(currencyByName.has(omen.appliesTo), `${omen.name} -> ${omen.appliesTo}`).toBe(true);
     }
   });
 
@@ -132,7 +136,7 @@ describe('sequence probability', () => {
   const dexterity = goals.hasMod('# to dexterity');
 
   it('reports the single-step chance from the real weights', () => {
-    const result = simulate(pool, gloves(), ['Exalted Orb'], dexterity);
+    const result = simulate(pool, gloves(), s('Exalted Orb'), dexterity);
 
     expect(result.weighted).toBe(true);
     expect(result.goalChance).toBeGreaterThan(0);
@@ -140,11 +144,11 @@ describe('sequence probability', () => {
   });
 
   it('improves with more attempts, but by less than multiplying would suggest', () => {
-    const one = simulate(pool, gloves(), ['Exalted Orb'], dexterity).goalChance;
+    const one = simulate(pool, gloves(), s('Exalted Orb'), dexterity).goalChance;
     const three = simulate(
       pool,
       gloves(),
-      ['Exalted Orb', 'Exalted Orb', 'Exalted Orb'],
+      s('Exalted Orb', 'Exalted Orb', 'Exalted Orb'),
       dexterity,
     ).goalChance;
 
@@ -157,7 +161,7 @@ describe('sequence probability', () => {
   });
 
   it('never exceeds certainty', () => {
-    const many = Array.from({ length: 6 }, () => 'Exalted Orb');
+    const many = Array.from({ length: 6 }, () => ({ currency: 'Exalted Orb' }));
     const result = simulate(pool, gloves(), many, dexterity);
 
     expect(result.goalChance).toBeGreaterThan(0);
@@ -166,7 +170,7 @@ describe('sequence probability', () => {
 
   it('counts a goal already met as certain, without spending anything', () => {
     const already = gloves({ suffixes: [{ ...mod('suffix', 'Dexterity'), key: '# to dexterity' }] });
-    const result = simulate(pool, already, ['Exalted Orb'], dexterity);
+    const result = simulate(pool, already, s('Exalted Orb'), dexterity);
 
     expect(result.goalChance).toBe(1);
   });
@@ -176,7 +180,7 @@ describe('sequence probability', () => {
       prefixes: [mod('prefix', 'A'), mod('prefix', 'B'), mod('prefix', 'C')],
       suffixes: [mod('suffix', 'D'), mod('suffix', 'E'), mod('suffix', 'F')],
     });
-    const result = simulate(pool, full, ['Exalted Orb', 'Exalted Orb'], dexterity);
+    const result = simulate(pool, full, s('Exalted Orb', 'Exalted Orb'), dexterity);
 
     expect(result.refusedAt).toBe(0);
     expect(result.steps[0]?.refusal).toBe('no open affix slot');
@@ -193,21 +197,21 @@ describe('sequence probability', () => {
       suffixes: [mod('suffix', 'D'), mod('suffix', 'E'), mod('suffix', 'F')],
     });
 
-    const straight = simulate(pool, nearlyFull, ['Exalted Orb', 'Exalted Orb'], dexterity);
+    const straight = simulate(pool, nearlyFull, s('Exalted Orb', 'Exalted Orb'), dexterity);
     // Only one prefix slot exists, so the second Exalted Orb has nowhere to go.
     expect(straight.refusedAt).toBe(1);
 
     const annulFirst = simulate(
       pool,
       nearlyFull,
-      ['Orb of Annulment', 'Exalted Orb', 'Exalted Orb'],
+      s('Orb of Annulment', 'Exalted Orb', 'Exalted Orb'),
       dexterity,
     );
     expect(annulFirst.refusedAt).toBeNull();
   });
 
   it('names a currency it does not model instead of guessing', () => {
-    const result = simulate(pool, gloves(), ['Vaal Orb'], dexterity);
+    const result = simulate(pool, gloves(), s('Vaal Orb'), dexterity);
 
     expect(result.steps[0]?.refusal).toBe('currency not modelled');
     expect(result.refusedAt).toBe(0);
@@ -216,7 +220,7 @@ describe('sequence probability', () => {
   it('says when the numbers are estimates rather than the game’s own odds', () => {
     // A base with no published spawn weights falls back to a flat pool.
     const sword = gloves({ baseType: 'Rusted Sword' });
-    const result = simulate(pool, sword, ['Exalted Orb'], dexterity);
+    const result = simulate(pool, sword, s('Exalted Orb'), dexterity);
 
     if (result.steps[0]?.refusal === null) {
       expect(typeof result.weighted).toBe('boolean');
@@ -228,11 +232,11 @@ describe('omen crafts (the synergy is computed, not asserted)', () => {
   const dexterity = goals.hasMod('# to dexterity'); // a suffix on this base
 
   it('raises the odds of a suffix by forcing an Exalt onto that side', () => {
-    const bare = simulate(pool, gloves(), ['Exalted Orb'], dexterity).goalChance;
+    const bare = simulate(pool, gloves(), s('Exalted Orb'), dexterity).goalChance;
     const forced = simulate(
       pool,
       gloves(),
-      ['Exalted Orb + Omen of Dextral Exaltation'],
+      [{ currency: 'Exalted Orb', omen: 'Omen of Dextral Exaltation' }],
       dexterity,
     ).goalChance;
 
@@ -246,7 +250,7 @@ describe('omen crafts (the synergy is computed, not asserted)', () => {
     const prefixOnly = simulate(
       pool,
       gloves(),
-      ['Exalted Orb + Omen of Sinistral Exaltation'],
+      [{ currency: 'Exalted Orb', omen: 'Omen of Sinistral Exaltation' }],
       dexterity,
     );
     // Sinistral adds only a prefix; dexterity is a suffix, so this never helps.
@@ -255,11 +259,11 @@ describe('omen crafts (the synergy is computed, not asserted)', () => {
 
   it('adds two modifiers with Greater Exaltation', () => {
     // Two chances at the goal in one step beats one.
-    const one = simulate(pool, gloves(), ['Exalted Orb'], dexterity).goalChance;
+    const one = simulate(pool, gloves(), s('Exalted Orb'), dexterity).goalChance;
     const two = simulate(
       pool,
       gloves(),
-      ['Exalted Orb + Omen of Greater Exaltation'],
+      [{ currency: 'Exalted Orb', omen: 'Omen of Greater Exaltation' }],
       dexterity,
     ).goalChance;
 
@@ -279,28 +283,43 @@ describe('omen crafts (the synergy is computed, not asserted)', () => {
     // short-circuits and the removal is actually exercised.
     const suffixFreed = {
       label: 'a suffix removed',
-      satisfied: (s: CraftState) => s.suffixes.length === 0 && s.prefixes.length === 1,
+      satisfied: (item: CraftState) => item.suffixes.length === 0 && item.prefixes.length === 1,
     };
     const result = simulate(
       pool,
       state,
-      ['Orb of Annulment + Omen of Dextral Annulment'],
+      [{ currency: 'Orb of Annulment', omen: 'Omen of Dextral Annulment' }],
       suffixFreed,
     );
 
     expect(result.goalChance).toBe(1);
+  });
+
+  it('says a mismatched omen does nothing rather than pretending it helps', () => {
+    // An Exaltation omen on an Annulment is a real mistake a player can make.
+    // The honest answer is that the pairing has no effect, reported as a refusal
+    // — not a silent success and not a crash.
+    const result = simulate(
+      pool,
+      gloves({ suffixes: [mod('suffix', 'A')] }),
+      [{ currency: 'Orb of Annulment', omen: 'Omen of Dextral Exaltation' }],
+      dexterity,
+    );
+
+    expect(result.refusedAt).toBe(0);
+    expect(result.steps[0]?.refusal).toContain('has no effect on');
   });
 });
 
 describe('compound goals', () => {
   it('requires every part of an "and" goal', () => {
     const both = goals.all([goals.hasMod('# to dexterity'), goals.hasMod('#% to fire resistance')]);
-    const one = simulate(pool, gloves(), ['Exalted Orb'], both);
+    const one = simulate(pool, gloves(), s('Exalted Orb'), both);
 
     // One modifier cannot satisfy a two-modifier goal, whatever it rolls.
     expect(one.goalChance).toBe(0);
 
-    const four = simulate(pool, gloves(), Array.from({ length: 4 }, () => 'Exalted Orb'), both);
+    const four = simulate(pool, gloves(), s('Exalted Orb', 'Exalted Orb', 'Exalted Orb', 'Exalted Orb'), both);
     expect(four.goalChance).toBeGreaterThan(0);
   });
 });
