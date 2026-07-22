@@ -127,8 +127,30 @@ function applyOperation(
       };
     }
 
-    case 'add': {
-      const available = candidates(pool, state, operation.filter ?? {});
+    case 'removeWeakest': {
+      // Whittling removes the lowest-level modifier. Tier is the proxy the state
+      // carries: a higher tier *number* is the lower-level, weaker roll, so the
+      // one with the greatest tier goes. Deterministic — a single outcome.
+      const removable = targets(state, operation.filter ?? {});
+      if (removable.length === 0) return { branches: [], weighted: true };
+      const weakest = removable.reduce((lowest, mod) =>
+        (mod.tier ?? 0) > (lowest.tier ?? 0) ? mod : lowest,
+      );
+      return { branches: [{ state: withoutGroup(state, weakest.group), probability: 1 }], weighted: true };
+    }
+
+    case 'add':
+    case 'addHomogenising': {
+      let filter = operation.filter ?? {};
+      if (operation.kind === 'addHomogenising') {
+        // "Of the same type as an existing modifier": restrict the pool to the
+        // tags the item already carries. With no tagged modifiers there is
+        // nothing to match, so it falls back to an ordinary add.
+        const existingTags = [...new Set(allMods(state).flatMap((mod) => mod.tags))];
+        if (existingTags.length > 0) filter = { ...filter, tags: existingTags };
+      }
+
+      const available = candidates(pool, state, filter);
       const dist = distribution(available);
       if (dist.total === 0) return { branches: [], weighted: dist.weighted };
 

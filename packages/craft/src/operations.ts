@@ -13,8 +13,19 @@ import type { Rarity } from './state.js';
 export type Operation =
   /** Adds one random modifier from the pool, honouring the filter. */
   | { readonly kind: 'add'; readonly filter?: Filter }
+  /**
+   * Adds a modifier that shares a tag with one already on the item — the
+   * Homogenising omens' "of the same type as an existing modifier". Falls back
+   * to a normal add when the item has no tagged modifiers to match.
+   */
+  | { readonly kind: 'addHomogenising'; readonly filter?: Filter }
   /** Removes one modifier at random from those the filter admits. */
   | { readonly kind: 'remove'; readonly filter?: Filter }
+  /**
+   * Removes the weakest modifier — Whittling's "lowest level modifier".
+   * Deterministic: the lowest-tier (highest tier number) modifier goes.
+   */
+  | { readonly kind: 'removeWeakest'; readonly filter?: Filter }
   /** Strips every modifier. */
   | { readonly kind: 'clear' }
   /** Changes rarity, which changes affix capacity. */
@@ -166,6 +177,14 @@ const twice =
   (steps: readonly Operation[]): Operation[] =>
     steps.flatMap((step) => (step.kind === kind ? [step, step] : [step]));
 
+/** Rewrites operations of one kind into another kind, keeping the filter. */
+const rewrite =
+  (from: Operation['kind'], to: Operation['kind']) =>
+  (steps: readonly Operation[]): Operation[] =>
+    steps.map((step) =>
+      step.kind === from ? ({ ...step, kind: to } as Operation) : step,
+    );
+
 export const OMENS: readonly Omen[] = [
   {
     name: 'Omen of Sinistral Exaltation',
@@ -226,6 +245,24 @@ export const OMENS: readonly Omen[] = [
     description: 'your next Regal Orb will add only suffix modifiers',
     appliesTo: 'Regal Orb',
     modify: restrict('add', 'suffix'),
+  },
+  {
+    name: 'Omen of Whittling',
+    description: 'your next Chaos Orb will remove the lowest level modifier',
+    appliesTo: 'Chaos Orb',
+    modify: rewrite('remove', 'removeWeakest'),
+  },
+  {
+    name: 'Omen of Homogenising Exaltation',
+    description: 'your next Exalted Orb will add a Modifier of the same type as an existing Modifier on the Item',
+    appliesTo: 'Exalted Orb',
+    modify: rewrite('add', 'addHomogenising'),
+  },
+  {
+    name: 'Omen of Homogenising Coronation',
+    description: 'your next Regal Orb will add a Modifier of the same type as an existing Modifier on the Item',
+    appliesTo: 'Regal Orb',
+    modify: rewrite('add', 'addHomogenising'),
   },
 ];
 

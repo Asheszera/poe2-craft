@@ -32,6 +32,10 @@ describe('currency effects dataset', () => {
     // The deeper toolset reaches the model too, with the game's own effect text.
     expect(prompt).toContain('**Orb of Annulment**');
     expect(prompt).toMatch(/Essences \(\d+\)/);
+    // The mechanics that were missing: Abyss/Desecration and Soul Cores.
+    expect(prompt).toMatch(/Desecration Bones\*\* \(\d+\)/);
+    expect(prompt).toContain('Abyssal');
+    expect(prompt).toMatch(/Soul Cores\*\* \(\d+\)/);
     // Map, atlas and league currencies do not belong in item-crafting advice.
     expect(prompt).not.toMatch(/waystone|Voidstone|Cartographer/i);
   });

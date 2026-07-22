@@ -77,9 +77,9 @@ export function CraftSimulator({
         <h2 className="text-[12px] font-medium">Simulate a currency sequence</h2>
       </div>
       <p className="-mt-2 text-[10px] leading-relaxed text-ink-dim">
-        Omens that restrict a currency to one side or repeat it are computed here. Others — Whittling,
-        Homogenising, Catalysing, essences, fossils — are real and the AI Craft Advisor plans with
-        them, but their odds are not simulated. Ask the advisor for those.
+        Side, repeat, Whittling and Homogenising omens are computed here. Broader mechanics —
+        essences, fossils, catalysts, desecration, soul cores — are real and the AI Craft Advisor
+        plans with them, but their odds are not simulated. Ask the advisor for those.
       </p>
 
       {/* Goal picker */}
@@ -166,11 +166,9 @@ export function CraftSimulator({
         {sequence.length > 0 && (
           <ol className="mt-1 flex flex-col gap-1.5 rounded-md border border-line bg-surface-2 p-2">
             {sequence.map((step, index) => {
-              // Only omens whose effect names this currency do anything to it.
-              // Others are shown too, so the player has the freedom to try — the
-              // simulation reports the pairing as no-effect if it does not fit.
+              // Only omens whose effect names this currency are offered; an omen
+              // that does nothing to it is not shown at all.
               const compatible = (omens.data ?? []).filter((o) => o.appliesTo === step.currency);
-              const others = (omens.data ?? []).filter((o) => o.appliesTo !== step.currency);
               const setOmen = (omen: string | null): void =>
                 setSequence((s) => s.map((v, i) => (i === index ? { ...v, omen } : v)));
 
@@ -179,37 +177,28 @@ export function CraftSimulator({
                   <span className="font-mono text-ink-dim">{index + 1}.</span>
                   <span className="rounded bg-surface-3 px-2 py-1 text-ink">{step.currency}</span>
 
-                  <span className="text-ink-dim">with</span>
-                  <select
-                    value={step.omen ?? ''}
-                    onChange={(e) => setOmen(e.target.value === '' ? null : e.target.value)}
-                    className="rounded border border-line bg-surface px-1.5 py-1 text-[11px] text-ink outline-none focus:border-accent/50"
-                  >
-                    <option value="">no omen</option>
-                    {compatible.length > 0 && (
-                      <optgroup label="affects this currency">
+                  {compatible.length > 0 && (
+                    <>
+                      <span className="text-ink-dim">with</span>
+                      <select
+                        value={step.omen ?? ''}
+                        onChange={(e) => setOmen(e.target.value === '' ? null : e.target.value)}
+                        className="rounded border border-line bg-surface px-1.5 py-1 text-[11px] text-ink outline-none focus:border-accent/50"
+                      >
+                        <option value="">no omen</option>
                         {compatible.map((o) => (
                           <option key={o.name} value={o.name} title={o.description}>
                             {o.name}
                           </option>
                         ))}
-                      </optgroup>
-                    )}
-                    {others.length > 0 && (
-                      <optgroup label="no effect here">
-                        {others.map((o) => (
-                          <option key={o.name} value={o.name} title={o.description}>
-                            {o.name}
-                          </option>
-                        ))}
-                      </optgroup>
-                    )}
-                  </select>
+                      </select>
+                    </>
+                  )}
 
                   <button
                     type="button"
                     onClick={() => setSequence((s) => s.filter((_, i) => i !== index))}
-                    className="text-ink-dim hover:text-red-300"
+                    className="ml-auto text-ink-dim hover:text-red-300"
                     title="Remove step"
                   >
                     <X size={11} />

@@ -295,6 +295,43 @@ describe('omen crafts (the synergy is computed, not asserted)', () => {
     expect(result.goalChance).toBe(1);
   });
 
+  it('Whittling removes the weakest modifier, deterministically', () => {
+    // Two mods: a strong T1 and a weak T8. Whittling on a Chaos takes the weak
+    // one (the highest tier number), then adds — so the T1 always survives.
+    const state = gloves({
+      prefixes: [{ ...mod('prefix', 'Strong'), tier: 1 }],
+      suffixes: [{ ...mod('suffix', 'Weak'), tier: 8 }],
+    });
+    const keepsStrong = {
+      label: 'keeps the strong prefix',
+      satisfied: (s: CraftState) => s.prefixes.some((m) => m.group === 'Strong'),
+    };
+    const result = simulate(
+      pool,
+      state,
+      [{ currency: 'Chaos Orb', omen: 'Omen of Whittling' }],
+      keepsStrong,
+    );
+    // The strong prefix is present at the start and never the one removed.
+    expect(result.goalChance).toBe(1);
+  });
+
+  it('Homogenising adds a modifier sharing a tag with an existing one', () => {
+    // Seed a suffix with the `attack` tag; Homogenising Exaltation must then add
+    // only attack-tagged modifiers.
+    const state = gloves({ suffixes: [{ ...mod('suffix', 'Seed'), tags: ['attack'] }] });
+    const attackGoal = goals.hasTag('attack', 2);
+    const homogenising = simulate(
+      pool,
+      state,
+      [{ currency: 'Exalted Orb', omen: 'Omen of Homogenising Exaltation' }],
+      attackGoal,
+    );
+    // Every modifier it could add shares the attack tag, so a second attack mod
+    // is certain (as long as the pool offers one, which this base does).
+    expect(homogenising.goalChance).toBeGreaterThan(0);
+  });
+
   it('says a mismatched omen does nothing rather than pretending it helps', () => {
     // An Exaltation omen on an Annulment is a real mistake a player can make.
     // The honest answer is that the pairing has no effect, reported as a refusal

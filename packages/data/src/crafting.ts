@@ -90,9 +90,10 @@ const flat = (text: string): string => text.replace(/\s+/g, ' ').trim();
  * the atlas, tablets, waystones, strongboxes, beasts or league consumables,
  * which do real things to other systems but nothing to the item on the bench.
  */
-const CRAFTING_EFFECT = /\b(modifier|rarity|quality|socket|corrupt|reforge|implicit|fracture)/i;
+const CRAFTING_EFFECT =
+  /\b(modifier|rarity|quality|socket|corrupt|reforge|implicit|fracture|desecrat|augment|influence|enchant|unique|sanctif|guaranteed|split)/i;
 const NOT_GEAR =
-  /\b(map|atlas|tablet|waystone|strongbox|beast|breach|voidstone|sextant|cartographer|logbook|tower|precursor|scarab|kirac|expedition)/i;
+  /\b(map|atlas|tablet|waystone|strongbox|beast|breach|voidstone|sextant|cartographer|logbook|tower|precursor|scarab|kirac|expedition|incubat)/i;
 
 /**
  * Large families of near-identical currencies, collapsed to one line each.
@@ -106,6 +107,7 @@ const NOT_GEAR =
 const FAMILIES: readonly { readonly label: string; readonly test: RegExp; readonly summary: string }[] = [
   { label: 'Catalysts', test: /Catalyst$/, summary: 'add tag-specific quality to a ring, amulet or jewel (one per damage/defence type)' },
   { label: 'Fossils', test: /Fossil$/, summary: 'bias the modifier pool toward or away from a tag, socketed in a resonator' },
+  { label: 'Desecration Bones', test: /(Collarbone|Jawbone|Rib|Cranium|Vertebrae|Gaze)$/, summary: 'desecrate a rare item, adding an Abyssal (otherworldly) modifier from the Kurgal/Amanamu/Ulaman pools' },
   { label: 'Eldritch Embers and Ichors', test: /Eldritch (Ember|Ichor)$/, summary: 'add a Searing Exarch or Eater of Worlds implicit to armour' },
   { label: 'Influence Exalted Orbs', test: /^(Crusader's|Hunter's|Redeemer's|Warlord's) Exalted Orb$/, summary: 'add an influence and a new influenced modifier to a rare item' },
   { label: 'Orbs of Sacrifice', test: /Orb of Sacrifice$/, summary: 'upgrade a Corruption Enchantment and remove a random modifier' },
@@ -157,6 +159,19 @@ export function currencyEffectsPrompt(dataset: CurrencyEffectDataset): string {
     const family = FAMILIES[index];
     return family ? [`- **${family.label}** (${count}): ${family.summary}`] : [];
   });
+
+  // Soul Cores are their own item class: socketables that grant a fixed
+  // modifier when placed in an Augment Socket, the way runes do. Counted as a
+  // family because there are scores of them, most sharing an effect shape.
+  const soulCores = dataset.entries.filter(
+    (entry) => entry.itemClass === 'SoulCore' && !/^\[|DNT/.test(entry.name),
+  );
+  if (soulCores.length > 0) {
+    families.push(
+      `- **Soul Cores** (${soulCores.length}): socket into an item's Augment Socket to grant a fixed modifier`,
+    );
+  }
+
   if (families.length > 0) sections.push(`Currency families:\n${families.join('\n')}`);
 
   // Essences: the game's data describes them all identically ("a guaranteed
