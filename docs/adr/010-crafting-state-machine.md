@@ -59,9 +59,23 @@ patch that changes an effect breaks the build instead of leaving the simulator
 modelling last league's behaviour.
 
 **What the game does not determine is not modelled.** Vaal Orb ("modifies an
-item unpredictably"), omens and essences are absent from the operation table
-rather than approximated. `simulate()` returns `currency not modelled` for them,
-which is a truthful answer, unlike an invented probability.
+item unpredictably") and essences are absent from the operation table rather
+than approximated. `simulate()` returns `currency not modelled` for them, which
+is a truthful answer, unlike an invented probability.
+
+**Omens that restrict a currency to one affix side, or repeat it, are modelled;
+the rest are not.** An Omen of Dextral Exaltation ("your next Exalted Orb will
+add only suffix modifiers") maps exactly onto the pool's existing side filter,
+so the simulator computes the real result — on Pauascale Gloves it lifts the
+chance of a specific suffix from 5.7% to 10.5%, because the roll no longer draws
+from the prefix pool. Ten such combinations are defined (side-restricting and
+doubling omens for Exalted, Annulment, Chaos and Regal), each pinned by test to
+the omen's own effect text. Omens whose effect the simulator cannot compute
+without data it lacks — "same type as an existing modifier" (Homogenising),
+"increase the chance of the corresponding type" (Catalysing), "remove the lowest
+level modifier" (Whittling) — are deliberately left out of the operation table.
+They still reach the player through the craft prompt's omen list; they are just
+never given a fabricated probability.
 
 ## Consequences
 

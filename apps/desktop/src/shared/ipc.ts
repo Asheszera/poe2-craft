@@ -221,7 +221,14 @@ export const ipcContract = {
    */
   'craft:currencies': {
     request: z.null(),
-    response: z.array(z.object({ name: z.string(), description: z.string() })),
+    response: z.array(
+      z.object({
+        name: z.string(),
+        description: z.string(),
+        /** True for omen-modified combinations, grouped apart in the interface. */
+        isOmenCraft: z.boolean(),
+      }),
+    ),
   },
 
   /**

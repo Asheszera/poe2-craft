@@ -208,6 +208,24 @@ Item Level: 80
     expect(prompt).toContain('is not a full reroll');
   });
 
+  it('offers the side-restricting omens for advanced crafting', () => {
+    const prompt = buildCraftPrompt(requestFor(RAW));
+
+    // The synergy the whole advanced-crafting section turns on: an omen that
+    // restricts a currency to one affix side, quoted from the game's text.
+    expect(prompt).toContain('Omen of Dextral Exaltation');
+    expect(prompt).toContain('add only suffix modifiers');
+    // And the technique that uses it.
+    expect(prompt).toContain('shrink the pool');
+  });
+
+  it('asks for tiered strategies rather than a single suggestion', () => {
+    const prompt = buildCraftPrompt(requestFor(RAW));
+    expect(prompt).toContain('cheap');
+    expect(prompt).toContain('high-end');
+    expect(prompt).toMatch(/success chance/i);
+  });
+
   it('names the real currency catalogue rather than relying on recall', () => {
     const prompt = buildCraftPrompt(requestFor(RAW));
 

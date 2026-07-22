@@ -1,4 +1,5 @@
 import {
+  craftingOmensPrompt,
   craftingToolsetPrompt,
   currenciesDataset,
   currencyEffectsDataset,
@@ -162,6 +163,10 @@ let currencyEffects: string | null = null;
 const effectsPrompt = (): string =>
   (currencyEffects ??= currencyEffectsPrompt(currencyEffectsDataset));
 
+let craftingOmens: string | null = null;
+const omensPrompt = (): string =>
+  (craftingOmens ??= craftingOmensPrompt(currencyEffectsDataset));
+
 export function buildSystemPrompt(extraInstructions?: string): string {
   if (!extraInstructions || extraInstructions.trim().length === 0) return systemTemplate;
 
@@ -248,6 +253,7 @@ export function buildCraftPrompt({
     ),
     craftingMethods: toolsetPrompt(),
     currencyEffects: effectsPrompt(),
+    craftingOmens: omensPrompt(),
     modifierPool: describePool(item),
     prices: pricePrompt(prices ?? EMPTY_TABLE(context.league)),
     craftIntent:

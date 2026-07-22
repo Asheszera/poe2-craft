@@ -69,11 +69,16 @@ describe('runSimulation (the IPC entry point)', () => {
     expect(many.goalChance).toBeGreaterThan(0);
   });
 
-  it('lists only currencies it can model', () => {
-    const names = modelledCurrencies();
+  it('lists only currencies it can model, with omen crafts flagged', () => {
+    const names = modelledCurrencies().map((c) => c.name);
     expect(names).toContain('Chaos Orb');
     expect(names).toContain('Exalted Orb');
     // Vaal Orb is unmodelled and must not be offered as if it were understood.
     expect(names).not.toContain('Vaal Orb');
+
+    // Omen crafts are present and marked so the interface can group them.
+    const omen = modelledCurrencies().find((c) => c.name.includes('Omen'));
+    expect(omen?.isOmenCraft).toBe(true);
+    expect(modelledCurrencies().find((c) => c.name === 'Chaos Orb')?.isOmenCraft).toBe(false);
   });
 });

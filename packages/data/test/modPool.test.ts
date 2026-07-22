@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  craftingOmensPrompt,
   currencyEffectsDataset,
   CurrencyEffectDatasetSchema,
   currencyEffectsPrompt,
@@ -28,6 +29,20 @@ describe('currency effects dataset', () => {
     const prompt = currencyEffectsPrompt(currencyEffectsDataset);
     expect(prompt).toContain('**Chaos Orb**');
     expect(prompt).toContain('**Exalted Orb**');
+  });
+
+  it('extracts the gear-crafting omens, effect text intact', () => {
+    const prompt = craftingOmensPrompt(currencyEffectsDataset);
+
+    // The side-restricting omens are the ones advanced crafting turns on.
+    expect(prompt).toContain('**Omen of Sinistral Exaltation**');
+    expect(prompt).toContain('add only prefix modifiers');
+    expect(prompt).toContain('**Omen of Dextral Annulment**');
+    // The duplicated lead-in bug would show as "your your"; guard against it.
+    expect(prompt).not.toContain('your your');
+    // Map and logbook omens are not gear crafting and must not be here.
+    expect(prompt).not.toContain('Logbook');
+    expect(prompt).not.toContain('Waystone');
   });
 });
 

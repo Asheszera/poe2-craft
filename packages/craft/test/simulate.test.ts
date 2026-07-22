@@ -4,6 +4,7 @@ import {
   candidates,
   capacity,
   CURRENCIES,
+  OMEN_CURRENCIES,
   checkRequirements,
   currencyByName,
   goals,
@@ -46,6 +47,22 @@ describe('currency definitions', () => {
     for (const currency of CURRENCIES) {
       expect(official.get(currency.name), `${currency.name} missing from the dataset`).toBeDefined();
       expect(official.get(currency.name), currency.name).toBe(currency.description);
+    }
+  });
+
+  it('grounds each omen craft in the omen’s own effect text', () => {
+    // The omen descriptions in the dataset carry the "While this item is
+    // active…" lead-in and wrap across lines; the operation's description is the
+    // effect clause. Every omen craft must quote an effect that actually exists.
+    const omenEffects = currencyEffectsDataset.entries
+      .filter((e) => e.itemClass === 'Omen')
+      .map((e) => e.description.replace(/\s+/g, ' '));
+
+    for (const craft of OMEN_CURRENCIES) {
+      expect(
+        omenEffects.some((effect) => effect.includes(craft.description)),
+        `${craft.name}: "${craft.description}" not found in any omen`,
+      ).toBe(true);
     }
   });
 
@@ -204,6 +221,74 @@ describe('sequence probability', () => {
     if (result.steps[0]?.refusal === null) {
       expect(typeof result.weighted).toBe('boolean');
     }
+  });
+});
+
+describe('omen crafts (the synergy is computed, not asserted)', () => {
+  const dexterity = goals.hasMod('# to dexterity'); // a suffix on this base
+
+  it('raises the odds of a suffix by forcing an Exalt onto that side', () => {
+    const bare = simulate(pool, gloves(), ['Exalted Orb'], dexterity).goalChance;
+    const forced = simulate(
+      pool,
+      gloves(),
+      ['Exalted Orb + Omen of Dextral Exaltation'],
+      dexterity,
+    ).goalChance;
+
+    // A bare Exalt might land on a prefix; the Dextral omen removes that
+    // possibility, so the same goal is strictly more likely. This number comes
+    // out of the weighted pool, not out of a rule that says "omens are better".
+    expect(forced).toBeGreaterThan(bare);
+  });
+
+  it('cannot reach a suffix goal by forcing the Exalt onto prefixes', () => {
+    const prefixOnly = simulate(
+      pool,
+      gloves(),
+      ['Exalted Orb + Omen of Sinistral Exaltation'],
+      dexterity,
+    );
+    // Sinistral adds only a prefix; dexterity is a suffix, so this never helps.
+    expect(prefixOnly.goalChance).toBe(0);
+  });
+
+  it('adds two modifiers with Greater Exaltation', () => {
+    // Two chances at the goal in one step beats one.
+    const one = simulate(pool, gloves(), ['Exalted Orb'], dexterity).goalChance;
+    const two = simulate(
+      pool,
+      gloves(),
+      ['Exalted Orb + Omen of Greater Exaltation'],
+      dexterity,
+    ).goalChance;
+
+    expect(two).toBeGreaterThan(one);
+  });
+
+  it('restricts an Annul to one side', () => {
+    // Dextral Annulment removes only a suffix. On an item with one prefix and
+    // one suffix, the suffix is the only thing it can take — so afterwards the
+    // suffix side always has an open slot and the prefix is untouched.
+    const state = gloves({
+      prefixes: [mod('prefix', 'KeepMe')],
+      suffixes: [mod('suffix', 'DropMe')],
+    });
+    // Goal: an open suffix slot exists, which is only true once the suffix is
+    // gone. Not met initially (both sides have one mod), so nothing
+    // short-circuits and the removal is actually exercised.
+    const suffixFreed = {
+      label: 'a suffix removed',
+      satisfied: (s: CraftState) => s.suffixes.length === 0 && s.prefixes.length === 1,
+    };
+    const result = simulate(
+      pool,
+      state,
+      ['Orb of Annulment + Omen of Dextral Annulment'],
+      suffixFreed,
+    );
+
+    expect(result.goalChance).toBe(1);
   });
 });
 

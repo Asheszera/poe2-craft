@@ -7,7 +7,7 @@ import {
   type AIProvider,
   type NarrativeResponse,
 } from '@poe2/ai';
-import { currencyEffectsDataset, defaultModPool } from '@poe2/data';
+import { defaultModPool } from '@poe2/data';
 import { modelledCurrencies, runSimulation, goals } from '@poe2/craft';
 import { canonicalTemplate } from '@poe2/shared';
 import type { PriceTable } from '@poe2/prices';
@@ -195,13 +195,7 @@ export const createHandlers = ({
     };
   },
 
-  'craft:currencies': () => {
-    const effects = new Map(currencyEffectsDataset.entries.map((e) => [e.name, e.description]));
-    return modelledCurrencies().map((name) => ({
-      name,
-      description: effects.get(name) ?? '',
-    }));
-  },
+  'craft:currencies': () => modelledCurrencies().map((c) => ({ ...c })),
 
   'craft:simulate': ({ raw, sequence, goal }) => {
     const analysis = analyzeText(raw);

@@ -95,3 +95,48 @@ export function currencyEffectsPrompt(dataset: CurrencyEffectDataset): string {
 
   return lines.join('\n');
 }
+
+/**
+ * Omens that modify how a crafting currency behaves, with the game's own text.
+ *
+ * This is where advanced crafting lives: an Omen of Sinistral Exaltation makes
+ * the next Exalted Orb add only a prefix, which is how a veteran forces a result
+ * onto one side or shrinks the pool a later step draws from. The model cannot
+ * reason about these unless it is told they exist and exactly what they do — and
+ * it must not invent them, because their names and effects are PoE2-specific and
+ * change between leagues.
+ *
+ * Filtered to gear crafting: omens that modify Waystones, logbooks, shrines,
+ * strongboxes or gambling are real but irrelevant to improving an item, and
+ * listing them would bury the ones that matter.
+ */
+const GEAR_CURRENCY_TERMS =
+  /\b(Exalted|Annulment|Chaos Orb|Regal|Alchemy|Essence|Divine Orb|Desecrat|Orb of Chance)\b/;
+const NON_GEAR_TERMS = /\b(Waystone|Logbook|Shrine|Strongbox|Gamble|Vendor|Flask|Experience)\b/;
+
+export function craftingOmensPrompt(dataset: CurrencyEffectDataset): string {
+  // The game wraps descriptions with embedded newlines; collapse them so the
+  // text can be filtered and printed as one line.
+  const flat = (text: string): string => text.replace(/\s+/g, ' ').trim();
+
+  const omens = dataset.entries
+    .filter((entry) => entry.itemClass === 'Omen')
+    .map((entry) => ({ name: entry.name, description: flat(entry.description) }))
+    .filter(
+      (entry) =>
+        GEAR_CURRENCY_TERMS.test(entry.description) && !NON_GEAR_TERMS.test(entry.description),
+    )
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  return omens
+    .map((omen) => {
+      // The lead-in is identical on every omen and carries no information; the
+      // effect ("your next Exalted Orb will…") is what the model needs.
+      const effect = omen.description.replace(
+        /^While this item is active in your inventory\s*/,
+        '',
+      );
+      return `- **${omen.name}**: ${effect}`;
+    })
+    .join('\n');
+}

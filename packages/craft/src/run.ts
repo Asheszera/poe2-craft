@@ -1,7 +1,7 @@
 import type { ModPoolIndex } from '@poe2/data';
 import type { ParsedItem } from '@poe2/models';
 import { fromSpec, type GoalSpec } from './goals.js';
-import { CURRENCIES } from './operations.js';
+import { CURRENCIES, OMEN_CURRENCIES } from './operations.js';
 import { simulate, type SimulationResult } from './simulate.js';
 import { stateFromItem } from './state.js';
 
@@ -26,5 +26,16 @@ export function runSimulation(
   return simulate(pool, state, sequence, fromSpec(goal));
 }
 
-/** Names of the currencies the simulator can model, for the interface to list. */
-export const modelledCurrencies = (): readonly string[] => CURRENCIES.map((c) => c.name);
+/** A currency the simulator can model, with the game's description of it. */
+export interface ModelledCurrency {
+  readonly name: string;
+  readonly description: string;
+  /** True for omen-modified combinations, so the interface can group them. */
+  readonly isOmenCraft: boolean;
+}
+
+/** Everything the simulator can model, for the interface to offer. */
+export const modelledCurrencies = (): readonly ModelledCurrency[] => [
+  ...CURRENCIES.map((c) => ({ name: c.name, description: c.description, isOmenCraft: false })),
+  ...OMEN_CURRENCIES.map((c) => ({ name: c.name, description: c.description, isOmenCraft: true })),
+];

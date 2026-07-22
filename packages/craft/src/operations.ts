@@ -122,4 +122,86 @@ export const CURRENCIES: readonly CurrencyDefinition[] = [
   },
 ];
 
-export const currencyByName = new Map(CURRENCIES.map((c) => [c.name, c]));
+/**
+ * Currencies as modified by an omen, for the omens whose effect maps cleanly
+ * onto the primitives this simulator already has.
+ *
+ * These are the advanced combinations a veteran reaches for: forcing an Exalted
+ * Orb onto one side, restricting which side an Annul can hit, adding two
+ * modifiers at once. Each is grounded in the game's own omen text (pinned by a
+ * test), and each is *only* here because its effect is a side filter or a
+ * repeat count — things the state machine can compute exactly.
+ *
+ * Deliberately absent: omens whose effect this simulator cannot compute without
+ * data it does not have. "Same type as an existing modifier" (Homogenising),
+ * "increase the chance of the corresponding type" (Catalysing) and "remove the
+ * lowest level modifier" (Whittling) are real and powerful, but modelling them
+ * from a one-line description would be inventing the mechanic. They reach the
+ * player through the prompt's omen list, not through a fabricated probability.
+ */
+export const OMEN_CURRENCIES: readonly CurrencyDefinition[] = [
+  {
+    name: 'Exalted Orb + Omen of Sinistral Exaltation',
+    description: 'your next Exalted Orb will add only prefix modifiers',
+    requires: { rarity: rare, needsOpenSlot: true },
+    steps: [{ kind: 'add', filter: { side: 'prefix' } }],
+  },
+  {
+    name: 'Exalted Orb + Omen of Dextral Exaltation',
+    description: 'your next Exalted Orb will add only suffix modifiers',
+    requires: { rarity: rare, needsOpenSlot: true },
+    steps: [{ kind: 'add', filter: { side: 'suffix' } }],
+  },
+  {
+    name: 'Exalted Orb + Omen of Greater Exaltation',
+    description: 'your next Exalted Orb will add two random modifiers',
+    requires: { rarity: rare, needsOpenSlot: true },
+    steps: [{ kind: 'add' }, { kind: 'add' }],
+  },
+  {
+    name: 'Orb of Annulment + Omen of Sinistral Annulment',
+    description: 'your next Orb of Annulment will remove only prefix modifiers',
+    requires: { minMods: 1 },
+    steps: [{ kind: 'remove', filter: { side: 'prefix' } }],
+  },
+  {
+    name: 'Orb of Annulment + Omen of Dextral Annulment',
+    description: 'your next Orb of Annulment will remove only suffix modifiers',
+    requires: { minMods: 1 },
+    steps: [{ kind: 'remove', filter: { side: 'suffix' } }],
+  },
+  {
+    name: 'Orb of Annulment + Omen of Greater Annulment',
+    description: 'your next Orb of Annulment will remove two modifiers',
+    requires: { minMods: 1 },
+    steps: [{ kind: 'remove' }, { kind: 'remove' }],
+  },
+  {
+    name: 'Chaos Orb + Omen of Sinistral Erasure',
+    description: 'your next Chaos Orb will remove only prefix modifiers',
+    requires: { rarity: rare, minMods: 1 },
+    steps: [{ kind: 'remove', filter: { side: 'prefix' } }, { kind: 'add' }],
+  },
+  {
+    name: 'Chaos Orb + Omen of Dextral Erasure',
+    description: 'your next Chaos Orb will remove only suffix modifiers',
+    requires: { rarity: rare, minMods: 1 },
+    steps: [{ kind: 'remove', filter: { side: 'suffix' } }, { kind: 'add' }],
+  },
+  {
+    name: 'Regal Orb + Omen of Sinistral Coronation',
+    description: 'your next Regal Orb will add only prefix modifiers',
+    requires: { rarity: ['Magic'] },
+    steps: [{ kind: 'setRarity', rarity: 'Rare' }, { kind: 'add', filter: { side: 'prefix' } }],
+  },
+  {
+    name: 'Regal Orb + Omen of Dextral Coronation',
+    description: 'your next Regal Orb will add only suffix modifiers',
+    requires: { rarity: ['Magic'] },
+    steps: [{ kind: 'setRarity', rarity: 'Rare' }, { kind: 'add', filter: { side: 'suffix' } }],
+  },
+];
+
+export const currencyByName = new Map(
+  [...CURRENCIES, ...OMEN_CURRENCIES].map((c) => [c.name, c]),
+);

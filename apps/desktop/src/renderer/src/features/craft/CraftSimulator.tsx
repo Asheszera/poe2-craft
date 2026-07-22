@@ -135,19 +135,50 @@ export function CraftSimulator({
         {currencies.isLoading ? (
           <Loader2 size={14} className="animate-spin text-ink-dim" />
         ) : (
-          <div className="flex flex-wrap gap-1.5">
-            {currencies.data?.map((currency) => (
-              <button
-                key={currency.name}
-                type="button"
-                onClick={() => setSequence((s) => [...s, currency.name])}
-                title={currency.description}
-                className="flex items-center gap-1 rounded-md border border-line bg-surface-2 px-2 py-1 text-[11px] text-ink-muted transition-colors hover:border-accent/40 hover:text-ink"
-              >
-                <Plus size={10} />
-                {currency.name}
-              </button>
-            ))}
+          <div className="flex flex-col gap-2">
+            <div className="flex flex-wrap gap-1.5">
+              {currencies.data
+                ?.filter((c) => !c.isOmenCraft)
+                .map((currency) => (
+                  <button
+                    key={currency.name}
+                    type="button"
+                    onClick={() => setSequence((s) => [...s, currency.name])}
+                    title={currency.description}
+                    className="flex items-center gap-1 rounded-md border border-line bg-surface-2 px-2 py-1 text-[11px] text-ink-muted transition-colors hover:border-accent/40 hover:text-ink"
+                  >
+                    <Plus size={10} />
+                    {currency.name}
+                  </button>
+                ))}
+            </div>
+
+            {/*
+              Omen-modified crafts are the advanced half: a currency restricted
+              to one affix side, or doubled. Grouped apart because they are how a
+              plan gains control, not just another orb.
+            */}
+            <details className="text-[11px]">
+              <summary className="cursor-pointer text-ink-dim hover:text-ink">
+                with an omen (restricts a currency to one side, or doubles it)
+              </summary>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {currencies.data
+                  ?.filter((c) => c.isOmenCraft)
+                  .map((currency) => (
+                    <button
+                      key={currency.name}
+                      type="button"
+                      onClick={() => setSequence((s) => [...s, currency.name])}
+                      title={currency.description}
+                      className="flex items-center gap-1 rounded-md border border-accent/25 bg-accent/5 px-2 py-1 text-[11px] text-ink-muted transition-colors hover:border-accent/50 hover:text-ink"
+                    >
+                      <Plus size={10} />
+                      {currency.name.replace(' + Omen of ', ' + ')}
+                    </button>
+                  ))}
+              </div>
+            </details>
           </div>
         )}
 

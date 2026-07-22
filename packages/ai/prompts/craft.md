@@ -28,7 +28,35 @@ Explain the analysis of this item.
 
 {{craftIntent}}
 
+This is the priority. You are not grading the item — you are answering "how do I
+turn *this* item into what the player asked for", even when that means removing
+good modifiers, redoing half of it, changing base, or (if the odds or cost are
+bad enough) advising them to stop and start from a better item. If the honest
+answer is "this is not worth crafting toward that goal", say so and say what
+would be.
+
 Weigh every step against this, and say in the first step if it cannot be met.
+
+**The player writes like a player, not like a spreadsheet. Translate.** The
+intent is usually vague or in build terms; turn it into concrete modifiers from
+the pool below, and fill the gaps the player left implicit:
+
+- "3 flat damage" on a martial weapon means the flat-damage modifiers that base
+  can actually roll — physical, and whichever elemental and chaos ones appear in
+  the pool. Name the specific ones, not the category.
+- "More damage" is flat damage, increased damage, attack or cast speed, critical
+  chance and multiplier, penetration, or an attribute that scales the skill —
+  whichever this item class can provide for the stated build.
+- "I need to survive" is life, resistances, armour, evasion, energy shield,
+  spirit — again filtered to what the base rolls and what the build uses.
+- "Better for farming" is rarity, movement speed, and enough resistance to get
+  there.
+- Use the modifier tags to make these connections; do not require the player to
+  have named a modifier exactly. When you fill a gap, say you did ("you said
+  flat damage, so I am targeting physical and lightning, which this bow rolls").
+- If the player named a preservation constraint — "keep the suffixes", "only
+  swap a bad prefix" — treat it as hard: plan only methods that respect it, and
+  reach for the omens that restrict a currency to one affix side.
 
 **Read the intent against what this item class can actually provide.** A stated
 goal is about the character, not about the item in isolation:
@@ -110,6 +138,53 @@ below with probability equal to its weight over the total of every modifier that
 could roll into that slot. A group already present is out of the pool, so each
 modifier you add makes the next draw more likely to be something you still lack.
 
+## Omens that change how a currency behaves
+
+{{craftingOmens}}
+
+These are the game's own descriptions of the omens that modify a crafting
+currency. This is where good crafting lives, and where a plan that only names
+bare orbs leaves most of the control on the table. **Reach for these before
+settling for raw luck**, and never treat a currency as if it can only be used
+alone.
+
+The most useful pattern is restricting a currency to one affix side, which both
+protects what you have and shrinks the pool the roll draws from:
+
+- Want a suffix and your prefixes are already good? An **Omen of Dextral
+  Exaltation** makes the next Exalted Orb add *only* a suffix — so it cannot
+  waste the roll on a prefix, and because it draws only from suffixes, the
+  chance of the one you want is higher than a bare Exalted's.
+- Need to remove a specific bad modifier? Restrict the Annul to its side with a
+  **Sinistral/Dextral Annulment** omen instead of praying it misses your good
+  ones.
+- "Keep the prefixes, redo the suffixes" is an **Omen of Dextral Erasure** on a
+  Chaos Orb (removes only a suffix) or a Dextral Annulment, then a suffix-only
+  Exalt.
+
+Only name omens from the list above. If the effect you want is not there, say
+what you need it to do rather than inventing an omen.
+
+## Advanced technique: shrink the pool before you gamble
+
+A veteran almost never rolls into the full pool. Before adding or removing at
+random, make the result more certain:
+
+- **Fill the other side first.** If prefixes are full, an Exalted Orb can only
+  add a suffix — no omen needed. Adding a cheap throwaway prefix to reach three
+  can force a later craft onto the suffixes. Explore these intermediate states;
+  the best route is often not the most direct one.
+- **Occupy groups you do not want.** Every group already on the item is out of
+  the pool. Sometimes adding a modifier you are indifferent to removes a common
+  competitor from the next roll.
+- **Use item level.** A lower item level is not only a weaker ceiling — it
+  removes the highest-level modifiers from the pool entirely, which can *raise*
+  the chance of hitting or annulling exactly what you want. If a slightly lower
+  base would make the craft far more consistent, say so.
+- Point the player at the Simulator tab for the exact odds of a concrete
+  sequence: it runs the same weighted pool conditionally across the steps. Your
+  job is to design the sequence and explain why; its job is the precise number.
+
 ## Crafting methods available in the live game
 
 {{craftingMethods}}
@@ -163,6 +238,21 @@ This list comes from the game's own data, not from memory. Plan with it:
 
   Rules for the set of plans:
 
+  - **Cover the three tiers a crafter weighs**, unless the item genuinely admits
+    fewer:
+    - a **cheap** route — few currencies, lowest investment, accepts a higher
+      chance of failing and rerolling;
+    - a **controlled** route — more steps, using side-restricting omens, pool
+      reduction and intermediate states to raise the success rate at moderate
+      cost;
+    - a **high-end** route — spares nothing: deterministic methods, omen
+      combinations, as many steps as the best result takes. Do not shorten it
+      just because it is long. If the best plan is twenty steps, give twenty.
+  - For each, state where it sits on **success chance**, **cost** and
+    **complexity** in relative terms (low/medium/high), and one line on why. Use
+    the pool percentages and the game's mechanics to justify the chance; do not
+    invent a precise probability or a currency total — the Simulator computes the
+    exact odds of a concrete sequence, and prices depend on the player's market.
   - **At least one route must use a deterministic method wherever one exists** —
     an essence that guarantees the modifier family, an omen that targets the
     affix side, a rune that fills the need outright. Presenting only gambling
@@ -172,7 +262,7 @@ This list comes from the game's own data, not from memory. Plan with it:
     costly deterministic build-up are two routes; "use an Exalted Orb" and "use
     another Exalted Orb" are one.
   - Order them best-fit-first for the stated intent, and say in each `name` who
-    it is for — budget, guaranteed, or high ceiling.
+    it is for — budget, controlled, or high ceiling.
 
 - `possibleUpgrades`: up to four concrete things that would make this item
   better, each one short. Empty array if the item cannot be improved.
