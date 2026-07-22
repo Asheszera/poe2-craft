@@ -49,11 +49,20 @@ body,
 }
 
 body {
-  background-color: var(--color-base);
   color: var(--color-ink);
   font-family: var(--font-sans);
   overflow: hidden;
   user-select: none;
+}
+
+/*
+ * The opaque background belongs to the main window only. The overlay shares
+ * this stylesheet but runs in a transparent window, so a global `body`
+ * background would paint the whole overlay black instead of letting just the
+ * card show. The main window opts in with this class on its <body>.
+ */
+body.app-shell {
+  background-color: var(--color-base);
 }
 
 /* Text the user may legitimately want to copy back out. */
