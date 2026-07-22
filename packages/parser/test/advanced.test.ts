@@ -152,3 +152,47 @@ describe('advanced item description', () => {
     expect(item.unparsedLines).toEqual([]);
   });
 });
+
+/**
+ * A hybrid modifier grants two statistics under one header, printed as two
+ * lines. The client says it is one prefix; the parser must agree, or the affix
+ * count comes out one too high and the item looks over-rolled.
+ */
+describe('hybrid modifiers (one header, two statistics)', () => {
+  const HYBRID = `Item Class: Body Armours
+Rarity: Rare
+Stag's Hide
+Advanced Wyrmscale
+--------
+Item Level: 81
+--------
+{ Prefix Modifier "Stag's" (Tier: 1) — Life, Evasion }
+39(39-42)% increased Evasion Rating
++49(42-49) to maximum Life
+{ Suffix Modifier "of the Wind" (Tier: 2) — Speed }
+8(7-9)% increased Movement Speed
+`;
+
+  const item = parsed(HYBRID);
+
+  it('counts the hybrid as one prefix, not two mods', () => {
+    const affixes = affixMods(item);
+    expect(affixes.filter((m) => m.affixType === 'prefix')).toHaveLength(1);
+    expect(affixes.filter((m) => m.affixType === 'suffix')).toHaveLength(1);
+    expect(affixes).toHaveLength(2);
+  });
+
+  it('keeps both statistics inside the one modifier', () => {
+    const hybrid = affixMods(item).find((m) => m.affixName === "Stag's");
+    expect(hybrid?.text).toContain('Evasion Rating');
+    expect(hybrid?.text).toContain('maximum Life');
+    // Both rolled values are captured, in order.
+    expect(hybrid?.values).toEqual([39, 49]);
+    // The client stated the tier; it is fact, not inference.
+    expect(hybrid?.tier).toMatchObject({ value: 1, confidence: 'exact' });
+  });
+
+  it('does not exceed the affix budget', () => {
+    expect(exceedsAffixBudget(item)).toBe(false);
+  });
+});
