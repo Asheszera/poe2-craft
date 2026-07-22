@@ -82,6 +82,16 @@ describe('parseModifierHeader', () => {
   it('is not fooled by an ordinary modifier line', () => {
     expect(parseModifierHeader('+80 to maximum Mana')).toBeNull();
   });
+
+  it('reads a unique’s own modifier as explicit, not implicit', () => {
+    // A Headhunter's `{ Unique Modifier — Attribute }` header: the trade site
+    // searches these as `explicit.stat_…`, so mislabelling them implicit gives
+    // the wrong stat id and the search matches nothing.
+    expect(parseModifierHeader('{ Unique Modifier — Attribute }')).toMatchObject({
+      category: 'explicit',
+      affixType: 'unknown',
+    });
+  });
 });
 
 describe('advanced item description', () => {

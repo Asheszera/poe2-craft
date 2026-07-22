@@ -26,7 +26,11 @@ const mod = (overrides: Partial<ItemMod>): ItemMod => ({
   ...overrides,
 });
 
-function item(mods: ItemMod[], rarity: Rarity = 'Rare'): ParsedItem {
+function item(
+  mods: ItemMod[],
+  rarity: Rarity = 'Rare',
+  properties: Partial<ParsedItem['properties']> = {},
+): ParsedItem {
   return {
     itemClass: 'Gloves',
     rarity,
@@ -48,6 +52,7 @@ function item(mods: ItemMod[], rarity: Rarity = 'Rare'): ParsedItem {
       weaponRange: null,
       waystoneTier: null,
       stackSize: null,
+      ...properties,
     },
     requirements: { level: null, strength: null, dexterity: null, intelligence: null },
     sockets: 2,
@@ -81,13 +86,13 @@ describe('building a search from a captured item', () => {
     expect(spec.rarity).toBe('rare');
     // A rare's name is random; it is not a search term.
     expect(spec.name).toBeNull();
-    // The site's own default: online sellers, instant-buyout and in-person.
-    expect(spec.status).toBe('available');
+    // Instant buyout by default — the cleanest price signal.
+    expect(spec.status).toBe('securable');
     expect(spec.filters).toHaveLength(2);
-    // Presence by default — the app never imposes a value the player didn't ask
-    // for, but it offers the rolled one so tightening is one click.
-    expect(spec.filters.every((f) => f.enabled && f.min === null && f.max === null)).toBe(true);
+    // Seeded to the item's own roll: "at least as good as mine".
     expect(spec.filters[0]?.rolled).toBe(80);
+    expect(spec.filters[0]?.min).toBe(80);
+    expect(spec.filters.every((f) => f.enabled && f.max === null)).toBe(true);
   });
 
   it('drops unmatched modifiers, whose id the market cannot search', () => {
@@ -130,6 +135,19 @@ describe('building a search from a captured item', () => {
     expect(defaultSpecFor(corrupted, 'x').corrupted).toBe(true);
   });
 
+  it('offers the item’s own armour/evasion/ES as filters, seeded to its rolls', () => {
+    const spec = defaultSpecFor(item([], 'Rare', { evasion: 420, armour: null }), 'Standard');
+    const ev = spec.equipment.find((f) => f.id === 'ev');
+    expect(ev).toMatchObject({ id: 'ev', label: 'Evasion Rating', enabled: true, min: 420 });
+    // A property the item does not have is not offered as a filter.
+    expect(spec.equipment.find((f) => f.id === 'ar')).toBeUndefined();
+
+    const body = buildQueryBody(spec) as {
+      query: { filters?: { equipment_filters?: { filters: { ev?: { min: number } } } } };
+    };
+    expect(body.query.filters?.equipment_filters?.filters.ev?.min).toBe(420);
+  });
+
   it('searches a unique by its name, which is how the market indexes it', () => {
     const unique = item([], 'Unique');
     const spec = defaultSpecFor(unique, 'Standard');
@@ -153,6 +171,7 @@ describe('rendering a spec into the trade API body', () => {
     collapse: false,
     indexed: null,
     maxBuyout: null,
+    equipment: [],
     filters: [
       { id: 'explicit.stat_life', text: 'Life', rolled: 80, enabled: true, min: null, max: null },
     ],

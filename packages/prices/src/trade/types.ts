@@ -103,6 +103,22 @@ export const TradeStatFilterSchema = z.object({
 export type TradeStatFilter = z.infer<typeof TradeStatFilterSchema>;
 
 /**
+ * A numeric property of the item itself — armour, evasion, energy shield — as a
+ * search filter. These live in the trade site's `equipment_filters`, keyed by
+ * its own short ids (`ar`, `ev`, `es`), and are seeded from the item's rolled
+ * value so "find one at least this tanky" is one toggle.
+ */
+export const TradeRangeFilterSchema = z.object({
+  /** The trade site's equipment filter id: `ar`, `ev`, `es`, … */
+  id: z.string().min(1),
+  label: z.string(),
+  enabled: z.boolean(),
+  min: z.number().nullable(),
+  max: z.number().nullable(),
+});
+export type TradeRangeFilter = z.infer<typeof TradeRangeFilterSchema>;
+
+/**
  * A whole search, in the app's own vocabulary.
  *
  * Serializable and round-trips over IPC: the renderer edits one of these and
@@ -135,6 +151,8 @@ export const TradeQuerySpecSchema = z.object({
   indexed: TradeIndexedSchema.nullable(),
   /** Cap the buyout in Exalted-Orb-equivalent, to trim outliers; null = no cap. */
   maxBuyout: z.number().nullable(),
+  /** The item's own defensive values (armour/evasion/ES) as search filters. */
+  equipment: z.array(TradeRangeFilterSchema),
   filters: z.array(TradeStatFilterSchema),
 });
 export type TradeQuerySpec = z.infer<typeof TradeQuerySpecSchema>;

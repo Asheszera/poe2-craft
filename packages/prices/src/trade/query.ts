@@ -3,6 +3,7 @@ import {
   TRADE_REALM,
   TRADE_SITE,
   type TradeQuerySpec,
+  type TradeRangeFilter,
   type TradeRarity,
   type TradeStatFilter,
 } from './types.js';
@@ -49,21 +50,41 @@ function searchableFilters(mods: readonly ItemMod[]): TradeStatFilter[] {
   for (const mod of mods) {
     if (!mod.matched || seen.has(mod.statId)) continue;
     seen.add(mod.statId);
+    const rolled = mod.values[0] ?? null;
     filters.push({
       id: mod.statId,
       text: mod.text,
-      // The first rolled value is the natural floor to offer; a hybrid mod's
-      // second value is left for the player to add if they care about it.
-      rolled: mod.values[0] ?? null,
+      rolled,
       enabled: true,
-      // Presence match by default — the value is a hint, not a constraint the
-      // app imposed. See the note in `types.ts`.
-      min: null,
+      // Seeded to the item's own roll: "at least as good as mine" is the search
+      // a price check wants, and the player loosens it by clearing the field.
+      // A hybrid mod's second value is left for them to add if it matters.
+      min: rolled,
       max: null,
     });
   }
 
   return filters;
+}
+
+/**
+ * The item's defensive properties as equipment filters, seeded to its rolls.
+ *
+ * Armour, evasion and energy shield are searchable in their own right — a
+ * player pricing a chest often cares about its defences as much as its
+ * modifiers — so they are offered as filters the same way, keyed by the trade
+ * site's own equipment ids.
+ */
+function equipmentFilters(item: ParsedItem): TradeRangeFilter[] {
+  const source: { id: string; label: string; value: number | null }[] = [
+    { id: 'ar', label: 'Armour', value: item.properties.armour },
+    { id: 'ev', label: 'Evasion Rating', value: item.properties.evasion },
+    { id: 'es', label: 'Energy Shield', value: item.properties.energyShield },
+  ];
+
+  return source
+    .filter((entry): entry is typeof entry & { value: number } => entry.value !== null && entry.value > 0)
+    .map((entry) => ({ id: entry.id, label: entry.label, enabled: true, min: entry.value, max: null }));
 }
 
 /**
@@ -81,9 +102,10 @@ export function defaultSpecFor(item: ParsedItem, league: string): TradeQuerySpec
     name: item.rarity === 'Unique' ? item.name || null : null,
     baseType: item.baseType || null,
     rarity: rarityOption(item.rarity),
-    // "Instant Buyout and In Person" — the site's own default: online sellers,
-    // both sale methods, so the cheapest priced listing is included.
-    status: 'available',
+    // Instant Buyout: only listings with a fixed price you can act on, which is
+    // the cleanest signal for "what is this worth" — the player can widen it to
+    // in-person or offline from the panel.
+    status: 'securable',
     minItemLevel: null,
     // Match the item's own state: a corrupted or mirrored item is a different
     // market, and pricing it against clean ones would mislead.
@@ -92,6 +114,7 @@ export function defaultSpecFor(item: ParsedItem, league: string): TradeQuerySpec
     collapse: false,
     indexed: null,
     maxBuyout: null,
+    equipment: equipmentFilters(item),
     filters: searchableFilters(item.mods),
   };
 }
@@ -136,8 +159,20 @@ export function buildQueryBody(spec: TradeQuerySpec): Record<string, unknown> {
   // No option = the Exalted-Orb-equivalent the site normalises every price to.
   if (spec.maxBuyout !== null) tradeFilters['price'] = { max: spec.maxBuyout };
 
+  const equipmentFilters: Record<string, unknown> = {};
+  for (const filter of spec.equipment) {
+    if (!filter.enabled) continue;
+    const range: Record<string, number> = {};
+    if (filter.min !== null) range.min = filter.min;
+    if (filter.max !== null) range.max = filter.max;
+    if (Object.keys(range).length > 0) equipmentFilters[filter.id] = range;
+  }
+
   const filters: Record<string, unknown> = {};
   if (Object.keys(typeFilters).length > 0) filters['type_filters'] = { filters: typeFilters };
+  if (Object.keys(equipmentFilters).length > 0) {
+    filters['equipment_filters'] = { filters: equipmentFilters };
+  }
   if (Object.keys(miscFilters).length > 0) filters['misc_filters'] = { filters: miscFilters };
   if (Object.keys(tradeFilters).length > 0) filters['trade_filters'] = { filters: tradeFilters };
   if (Object.keys(filters).length > 0) query['filters'] = filters;

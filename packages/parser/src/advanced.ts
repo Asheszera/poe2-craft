@@ -47,6 +47,12 @@ const SOURCE_CATEGORY: Readonly<Record<string, ModCategory>> = {
   implicit: 'implicit',
   crafted: 'crafted',
   fractured: 'fractured',
+  // A unique's own modifiers are headed `{ Unique Modifier — … }`. They are
+  // explicit, not intrinsic: the trade site searches them as `explicit.stat_…`
+  // and the client lists them like affixes. Without this they fell through to
+  // the intrinsic default and were mislabelled implicit — a Headhunter's
+  // `+X to Dexterity` searched as an implicit, which matches nothing.
+  unique: 'explicit',
   rune: 'rune',
   enchant: 'enchant',
   enchanted: 'enchant',

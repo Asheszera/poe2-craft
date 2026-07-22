@@ -106,6 +106,12 @@ export function LiveMarketSearch(): React.JSX.Element {
         ? { ...current, filters: current.filters.map((f, i) => (i === index ? { ...f, ...patch } : f)) }
         : current,
     );
+  const patchEquipment = (index: number, patch: Partial<TradeQuerySpec['equipment'][number]>): void =>
+    setSpec((current) =>
+      current
+        ? { ...current, equipment: current.equipment.map((f, i) => (i === index ? { ...f, ...patch } : f)) }
+        : current,
+    );
 
   const { item } = analysis;
   const searchError = search.data && !search.data.ok ? search.data.error.message : null;
@@ -297,6 +303,24 @@ export function LiveMarketSearch(): React.JSX.Element {
             </label>
           </div>
 
+          {/* Defensive properties (armour / evasion / energy shield) */}
+          {spec.equipment.length > 0 && (
+            <ul className="flex flex-col gap-1.5">
+              {spec.equipment.map((filter, index) => (
+                <FilterRow
+                  key={filter.id}
+                  label={filter.label}
+                  enabled={filter.enabled}
+                  min={filter.min}
+                  max={filter.max}
+                  onToggle={() => patchEquipment(index, { enabled: !filter.enabled })}
+                  onMin={(v) => patchEquipment(index, { min: v })}
+                  onMax={(v) => patchEquipment(index, { max: v })}
+                />
+              ))}
+            </ul>
+          )}
+
           {/* Modifier filters */}
           {spec.filters.length === 0 ? (
             <p className="text-[11px] text-ink-dim">
@@ -306,45 +330,18 @@ export function LiveMarketSearch(): React.JSX.Element {
           ) : (
             <ul className="flex flex-col gap-1.5">
               {spec.filters.map((filter, index) => (
-                <li
+                <FilterRow
                   key={filter.id}
-                  className="flex flex-wrap items-center gap-2 rounded-md border border-line bg-surface-2 px-2.5 py-1.5 text-[11px]"
-                >
-                  <input
-                    type="checkbox"
-                    checked={filter.enabled}
-                    onChange={(e) => patchFilter(index, { enabled: e.target.checked })}
-                  />
-                  <span className={`min-w-0 flex-1 truncate ${filter.enabled ? 'text-ink' : 'text-ink-dim line-through'}`}>
-                    {filter.text}
-                  </span>
-                  {filter.rolled !== null && filter.enabled && (
-                    <button
-                      type="button"
-                      onClick={() => patchFilter(index, { min: filter.rolled })}
-                      title="Set the minimum to this item’s roll"
-                      className="rounded bg-surface-3 px-1.5 py-0.5 font-mono text-[10px] text-ink-dim hover:text-ink"
-                    >
-                      rolled {filter.rolled}
-                    </button>
-                  )}
-                  <input
-                    inputMode="numeric"
-                    value={filter.min ?? ''}
-                    onChange={(e) => patchFilter(index, { min: parseNum(e.target.value) })}
-                    placeholder="min"
-                    disabled={!filter.enabled}
-                    className="w-14 rounded border border-line bg-surface px-1.5 py-1 text-ink outline-none focus:border-accent/50 disabled:opacity-40"
-                  />
-                  <input
-                    inputMode="numeric"
-                    value={filter.max ?? ''}
-                    onChange={(e) => patchFilter(index, { max: parseNum(e.target.value) })}
-                    placeholder="max"
-                    disabled={!filter.enabled}
-                    className="w-14 rounded border border-line bg-surface px-1.5 py-1 text-ink outline-none focus:border-accent/50 disabled:opacity-40"
-                  />
-                </li>
+                  label={filter.text}
+                  enabled={filter.enabled}
+                  min={filter.min}
+                  max={filter.max}
+                  rolled={filter.rolled}
+                  onToggle={() => patchFilter(index, { enabled: !filter.enabled })}
+                  onMin={(v) => patchFilter(index, { min: v })}
+                  onMax={(v) => patchFilter(index, { max: v })}
+                  onRolled={() => patchFilter(index, { min: filter.rolled })}
+                />
               ))}
             </ul>
           )}
@@ -360,6 +357,80 @@ export function LiveMarketSearch(): React.JSX.Element {
         </>
       )}
     </section>
+  );
+}
+
+/**
+ * One toggleable search filter — a modifier or a defensive property.
+ *
+ * The whole row is the toggle: clicking anywhere but the number fields flips it
+ * on or off, which is how the trade overlays work and what makes tuning a
+ * search fast. The inputs stop the click from bubbling so editing a bound never
+ * disables the filter under the cursor.
+ */
+function FilterRow({
+  label,
+  enabled,
+  min,
+  max,
+  rolled,
+  onToggle,
+  onMin,
+  onMax,
+  onRolled,
+}: {
+  label: string;
+  enabled: boolean;
+  min: number | null;
+  max: number | null;
+  rolled?: number | null;
+  onToggle: () => void;
+  onMin: (value: number | null) => void;
+  onMax: (value: number | null) => void;
+  onRolled?: () => void;
+}): React.JSX.Element {
+  const stop = (e: React.MouseEvent): void => e.stopPropagation();
+  return (
+    <li
+      onClick={onToggle}
+      className="flex flex-wrap items-center gap-2 rounded-md border border-line bg-surface-2 px-2.5 py-1.5 text-[11px] cursor-pointer hover:border-accent/40"
+    >
+      <input type="checkbox" checked={enabled} readOnly className="pointer-events-none" />
+      <span className={`min-w-0 flex-1 truncate ${enabled ? 'text-ink' : 'text-ink-dim line-through'}`}>
+        {label}
+      </span>
+      {rolled != null && enabled && onRolled && rolled !== min && (
+        <button
+          type="button"
+          onClick={(e) => {
+            stop(e);
+            onRolled();
+          }}
+          title="Set the minimum to this item’s roll"
+          className="rounded bg-surface-3 px-1.5 py-0.5 font-mono text-[10px] text-ink-dim hover:text-ink"
+        >
+          rolled {rolled}
+        </button>
+      )}
+      <input
+        inputMode="numeric"
+        value={min ?? ''}
+        onClick={stop}
+        onChange={(e) => onMin(parseNum(e.target.value))}
+        placeholder="min"
+        disabled={!enabled}
+        className="w-14 rounded border border-line bg-surface px-1.5 py-1 text-ink outline-none focus:border-accent/50 disabled:opacity-40"
+      />
+      <input
+        inputMode="numeric"
+        value={max ?? ''}
+        onClick={stop}
+        onChange={(e) => onMax(parseNum(e.target.value))}
+        placeholder="max"
+        disabled={!enabled}
+        className="w-14 rounded border border-line bg-surface px-1.5 py-1 text-ink outline-none focus:border-accent/50 disabled:opacity-40"
+      />
+    </li>
   );
 }
 
