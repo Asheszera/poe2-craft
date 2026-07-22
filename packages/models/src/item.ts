@@ -35,6 +35,10 @@ export const ModCategorySchema = z.enum([
   'desecrated',
   'sanctum',
   'scourge',
+  // Added by Vaal corruption, and socketed Soul Cores. Both ride along without
+  // consuming a prefix or suffix slot, so both are intrinsic (see below).
+  'corrupted',
+  'soulcore',
 ]);
 export type ModCategory = z.infer<typeof ModCategorySchema>;
 

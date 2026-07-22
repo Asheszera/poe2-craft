@@ -28,16 +28,22 @@ export interface ModifierHeader {
 }
 
 /**
- * `{ Crafted Prefix Modifier "Name" (Tier: 3) — Tag, Tag }`
+ * Any line wholly wrapped in braces is an Advanced Item Description annotation,
+ * never a statistic.
  *
- * Every part except the braces and the word "Modifier" is optional: implicits
- * have no affix type, runes have no tier, and plenty of modifiers have no name.
+ * The game heads far more than prefixes and suffixes this way: implicits, runes,
+ * enchantments, Soul Cores, and corruption additions all get a `{ … }` line —
+ * and several of them omit the word "Modifier" entirely, e.g.
+ * `{ Corruption Enhancement — Evasion }`. Recognising only the "… Modifier …"
+ * form let those slip through as if they were statistics, so the line beneath a
+ * corruption header was fused onto the modifier above it and the pair matched
+ * nothing. Matching the braces themselves is what fixes that: a brace line is a
+ * boundary no matter what it says inside.
  */
-const HEADER_RE =
-  /^\{\s*(?<qualifiers>[A-Za-z ]*?)\s*Modifier\s*(?:"(?<name>[^"]*)")?\s*(?:\(Tier:\s*(?<tier>\d+)\))?\s*(?:[—–-]\s*(?<tags>[^}]*?))?\s*\}$/;
+const BRACE_RE = /^\{(?<inside>.+)\}$/;
 
-/** Words that can appear before "Modifier", mapped to what they mean. */
-const QUALIFIER_CATEGORY: Readonly<Record<string, ModCategory>> = {
+/** Source keywords that can appear inside a header, mapped to a category. */
+const SOURCE_CATEGORY: Readonly<Record<string, ModCategory>> = {
   implicit: 'implicit',
   crafted: 'crafted',
   fractured: 'fractured',
@@ -47,44 +53,66 @@ const QUALIFIER_CATEGORY: Readonly<Record<string, ModCategory>> = {
   desecrated: 'desecrated',
   sanctum: 'sanctum',
   scourge: 'scourge',
+  // Vaal corruption adds a modifier under a "Corruption …" header. It occupies
+  // no affix slot, so it must never be read as a prefix or a suffix.
+  corruption: 'corrupted',
+  corrupted: 'corrupted',
+  // Soul Cores are socketed like runes and grant a fixed modifier.
+  soul: 'soulcore',
+  soulcore: 'soulcore',
 };
 
-export const isModifierHeader = (line: string): boolean => HEADER_RE.test(line.trim());
+export const isModifierHeader = (line: string): boolean => BRACE_RE.test(line.trim());
 
 /**
- * Parses a modifier header line, or returns null when the line is not one.
+ * Parses a header line, or returns null when the line is not brace-wrapped.
  *
- * Qualifiers are read independently: `{ Crafted Prefix Modifier … }` carries
- * both a category (crafted) and an affix type (prefix), and either may be
- * absent.
+ * The descriptor (before the dash) and the tags (after it) are read separately.
+ * Affix type comes only from an explicit "Prefix"/"Suffix"; category comes from
+ * a source keyword. A brace header with neither — an unfamiliar source in a
+ * future league — defaults to intrinsic, never to an affix, because inventing a
+ * prefix out of an unknown header is the exact failure this rewrite removes.
  */
 export function parseModifierHeader(line: string): ModifierHeader | null {
-  const match = HEADER_RE.exec(line.trim());
-  if (!match?.groups) return null;
+  const match = BRACE_RE.exec(line.trim());
+  const inside = match?.groups?.['inside'];
+  if (inside === undefined) return null;
 
-  const qualifiers = (match.groups['qualifiers'] ?? '').toLowerCase().split(/\s+/).filter(Boolean);
+  // Split the descriptor from the trailing tag list on the em/en dash (or a
+  // spaced hyphen) the client uses. A bare hyphen without surrounding spaces is
+  // left alone so hyphenated words survive.
+  const dash = inside.search(/\s[—–-]\s/);
+  const descriptor = (dash >= 0 ? inside.slice(0, dash) : inside).trim();
+  const tagText = dash >= 0 ? inside.slice(dash + 1) : '';
 
-  let category: ModCategory = 'explicit';
+  const name = /"([^"]*)"/.exec(descriptor)?.[1];
+  const tierText = /\(Tier:\s*(\d+)\)/.exec(descriptor)?.[1];
+
+  const words = descriptor
+    .toLowerCase()
+    .replace(/"[^"]*"/g, ' ')
+    .replace(/\(tier:\s*\d+\)/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean);
+
   let affixType: AffixType = 'unknown';
+  let category: ModCategory | null = null;
 
-  for (const word of qualifiers) {
-    if (word === 'prefix' || word === 'suffix') {
-      affixType = word;
-      continue;
-    }
-    const mapped = QUALIFIER_CATEGORY[word];
-    if (mapped) category = mapped;
+  for (const word of words) {
+    if (word === 'prefix' || word === 'suffix') affixType = word;
+    else category ??= SOURCE_CATEGORY[word] ?? null;
   }
 
-  const tierText = match.groups['tier'];
-  const name = match.groups['name'];
-  const tags = (match.groups['tags'] ?? '')
+  const tags = tagText
+    .replace(/[—–-]/g, ' ')
     .split(',')
     .map((tag) => tag.trim())
     .filter((tag) => tag.length > 0);
 
   return {
-    category,
+    // An explicit affix if the client said prefix/suffix and named no other
+    // source; otherwise the source it named; otherwise intrinsic by default.
+    category: category ?? (affixType === 'unknown' ? 'implicit' : 'explicit'),
     affixType,
     name: name === undefined || name.length === 0 ? null : name,
     tier: tierText === undefined ? null : Number(tierText),

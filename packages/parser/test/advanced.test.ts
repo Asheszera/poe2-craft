@@ -196,3 +196,71 @@ Item Level: 81
     expect(exceedsAffixBudget(item)).toBe(false);
   });
 });
+
+/**
+ * The game heads more than prefixes and suffixes with `{ … }`: corruption, runes
+ * and Soul Cores get one too, and several omit the word "Modifier". Reading only
+ * the "… Modifier …" form let a corruption header slip through as a statistic,
+ * fusing the line under it onto the modifier above — which is how a corruption
+ * Evasion and half of a hybrid Life/Evasion prefix ended up as one nonsense mod.
+ */
+describe('non-affix sources are not read as prefixes', () => {
+  const CORRUPTED = `Item Class: Body Armours
+Rarity: Rare
+Stag's Hide
+Advanced Wyrmscale
+--------
+Item Level: 81
+--------
+{ Prefix Modifier "Stag's" (Tier: 1) — Life, Evasion }
+39(39-42)% increased Evasion Rating
++49(42-49) to maximum Life
+--------
+{ Corruption Enhancement — Evasion }
+20(15-25)% increased Evasion Rating
+--------
+Corrupted
+`;
+
+  const item = parsed(CORRUPTED);
+
+  it('reads the header without the word "Modifier"', () => {
+    const header = parseModifierHeader('{ Corruption Enhancement — Evasion }');
+    expect(header).toMatchObject({ category: 'corrupted', affixType: 'unknown', tags: ['Evasion'] });
+  });
+
+  it('counts the corruption mod as intrinsic, not an affix', () => {
+    // One prefix (the hybrid), zero suffixes, and the corruption rides along
+    // outside the budget. Before the fix this came out as two prefixes.
+    expect(affixMods(item).filter((m) => m.affixType === 'prefix')).toHaveLength(1);
+    expect(affixMods(item)).toHaveLength(1);
+    expect(intrinsicMods(item).some((m) => m.category === 'corrupted')).toBe(true);
+    expect(exceedsAffixBudget(item)).toBe(false);
+  });
+
+  it('keeps the corruption Evasion separate from the hybrid’s Evasion', () => {
+    const hybrid = affixMods(item).find((m) => m.affixName === "Stag's");
+    expect(hybrid?.text).toContain('maximum Life');
+    // The corruption line is its own modifier, not appended to the prefix.
+    const corruption = intrinsicMods(item).find((m) => m.category === 'corrupted');
+    expect(corruption?.text).toContain('increased Evasion Rating');
+    expect(corruption?.text).not.toContain('maximum Life');
+  });
+
+  it('treats a Rune header as intrinsic with no affix type', () => {
+    expect(parseModifierHeader('{ Rune Modifier — Cold }')).toMatchObject({
+      category: 'rune',
+      affixType: 'unknown',
+    });
+  });
+
+  it('treats a Soul Core header as intrinsic', () => {
+    expect(parseModifierHeader('{ Soul Core — Attack }')?.category).toBe('soulcore');
+  });
+
+  it('defaults an unfamiliar brace header to intrinsic, never a prefix', () => {
+    const header = parseModifierHeader('{ Some Future Source — Life }');
+    expect(header?.affixType).toBe('unknown');
+    expect(header?.category).toBe('implicit');
+  });
+});

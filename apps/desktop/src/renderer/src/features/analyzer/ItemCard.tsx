@@ -22,10 +22,20 @@ const MOD_ACCENT: Record<ModCategory, string> = {
   desecrated: 'border-mod-desecrated',
   sanctum: 'border-mod-sanctum',
   scourge: 'border-mod-scourge',
+  corrupted: 'border-mod-scourge',
+  soulcore: 'border-mod-rune',
 };
 
 /** Within each group, order mirrors how the game stacks modifiers. */
-const INTRINSIC_ORDER: ModCategory[] = ['enchant', 'implicit', 'rune', 'sanctum', 'scourge'];
+const INTRINSIC_ORDER: ModCategory[] = [
+  'enchant',
+  'implicit',
+  'rune',
+  'soulcore',
+  'corrupted',
+  'sanctum',
+  'scourge',
+];
 const AFFIX_ORDER: ModCategory[] = ['explicit', 'crafted', 'fractured', 'desecrated'];
 
 function Stat({ label, value }: { label: string; value: string }): React.JSX.Element {
