@@ -61,6 +61,16 @@ function createMainWindow(): BrowserWindow {
   // Avoid the white flash before React has painted.
   window.on('ready-to-show', () => window.show());
 
+  mainWindow = window;
+  window.on('closed', () => {
+    mainWindow = null;
+    // Closing the app window closes the app. Without this, the overlay — which
+    // is also a BrowserWindow — keeps `window-all-closed` from ever firing, so
+    // the process lingers headless, holds the single-instance lock, and a
+    // relaunch silently quits while only the overlay keeps appearing on capture.
+    if (process.platform !== 'darwin') app.quit();
+  });
+
   // Any navigation the app itself did not initiate goes to the system browser.
   window.webContents.setWindowOpenHandler(({ url }) => {
     void shell.openExternal(url);
@@ -82,6 +92,20 @@ let captureHistory: SqliteHistoryRepository | null = null;
 let overlay: OverlayWindow | null = null;
 let hotkeys: HotkeyRegistry | null = null;
 let overlaySettings: SettingsStore | null = null;
+/** The app window, tracked so a relaunch or activate can restore it by name
+ *  rather than focusing whatever `getAllWindows()` happens to return — which is
+ *  the invisible overlay once the main window has been closed. */
+let mainWindow: BrowserWindow | null = null;
+
+/** Brings the app window to the front, recreating it if it is gone. */
+function showMainWindow(): void {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.focus();
+    return;
+  }
+  createMainWindow();
+}
 
 /**
  * Shows the overlay for a fresh capture, when it would actually help.
@@ -161,13 +185,9 @@ app.on('will-quit', () => {
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
-  app.on('second-instance', () => {
-    const [existing] = BrowserWindow.getAllWindows();
-    if (existing) {
-      if (existing.isMinimized()) existing.restore();
-      existing.focus();
-    }
-  });
+  // A second launch should surface the app window that already exists — the
+  // main one, not the overlay that `getAllWindows()` might hand back first.
+  app.on('second-instance', showMainWindow);
 
   void app.whenReady().then(() => {
     // `userData` is only resolvable after the app is ready, so the store is
@@ -198,9 +218,9 @@ if (!app.requestSingleInstanceLock()) {
     createMainWindow();
     watcher.setEnabled(settings.settings.clipboardWatch);
 
-    app.on('activate', () => {
-      if (BrowserWindow.getAllWindows().length === 0) createMainWindow();
-    });
+    // macOS dock activation. `getAllWindows()` can be non-empty while only the
+    // overlay survives, so the main window is restored by reference.
+    app.on('activate', showMainWindow);
   });
 
   app.on('window-all-closed', () => {
