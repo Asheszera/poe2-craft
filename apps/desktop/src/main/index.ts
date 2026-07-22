@@ -206,7 +206,21 @@ if (!app.requestSingleInstanceLock()) {
     settings.hotkeyStatus = { active: hotkeyStatus.enabled, error: hotkeyStatus.error };
 
     registerIpcHandlers(
-      createHandlers({ watcher, settings, history, hotkeys, aiDebug: createAiDebugLogger(isDev) }),
+      createHandlers({
+        watcher,
+        settings,
+        history,
+        hotkeys,
+        aiDebug: createAiDebugLogger(isDev),
+        // `overlay` is assigned just below and read at call time, not now.
+        setOverlayInteractive: (interactive) => overlay?.setInteractive(interactive),
+        openMainWindow: () => {
+          showMainWindow();
+          // The full analysis is now on screen in the main window, so the
+          // corner card has done its job.
+          overlay?.hide();
+        },
+      }),
     );
     captureHistory = history;
     overlaySettings = settings;

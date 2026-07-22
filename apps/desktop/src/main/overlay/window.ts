@@ -70,7 +70,10 @@ export class OverlayWindow {
     // is what keeps the overlay above a windowed-fullscreen game.
     window.setAlwaysOnTop(true, 'screen-saver');
     window.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
-    window.setIgnoreMouseEvents(true);
+    // Click-through by default, but `forward: true` keeps delivering mouse-move
+    // events so the renderer can tell when the cursor is over the card and ask
+    // to become interactive — clickable on hover, invisible to clicks otherwise.
+    window.setIgnoreMouseEvents(true, { forward: true });
 
     const { devUrl, rendererDir } = this.options;
     if (devUrl) void window.loadURL(`${devUrl}/overlay.html`);
@@ -104,11 +107,25 @@ export class OverlayWindow {
     const window = this.#ensure();
     this.#position(corner);
 
+    // Reset to click-through for the fresh capture; the cursor is not on it yet.
+    window.setIgnoreMouseEvents(true, { forward: true });
     window.webContents.send('overlay:show', analysis);
     window.showInactive();
 
     if (this.#hideTimer) clearTimeout(this.#hideTimer);
     this.#hideTimer = setTimeout(() => this.hide(), durationMs);
+  }
+
+  /**
+   * Makes the overlay clickable, or click-through again.
+   *
+   * Interactive on hover so a click lands; back to click-through on leave so it
+   * never intercepts a click meant for the game.
+   */
+  setInteractive(interactive: boolean): void {
+    if (this.#window && !this.#window.isDestroyed()) {
+      this.#window.setIgnoreMouseEvents(!interactive, { forward: true });
+    }
   }
 
   hide(): void {

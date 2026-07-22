@@ -31,6 +31,10 @@ export const IPC_CHANNELS = [
   'craft:omens',
   'craft:simulate',
   'build:evaluate',
+  // The overlay talks back: it toggles its own click-through as the cursor
+  // enters it, and opens the main window when clicked.
+  'overlay:setInteractive',
+  'overlay:open',
 ] as const;
 
 /** Main → renderer, fire-and-forget. */

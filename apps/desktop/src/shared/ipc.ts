@@ -289,6 +289,24 @@ export const ipcContract = {
   },
 
   /**
+   * The overlay turns its own click-through on and off.
+   *
+   * It is click-through by default so it never blocks the game; while the cursor
+   * is over it, it becomes interactive so a click registers. The renderer drives
+   * this from `mouseenter`/`mouseleave` on the card.
+   */
+  'overlay:setInteractive': {
+    request: z.object({ interactive: z.boolean() }),
+    response: z.null(),
+  },
+
+  /**
+   * The overlay was clicked: bring the main window forward with the full
+   * analysis, which it already holds from the capture broadcast.
+   */
+  'overlay:open': { request: z.null(), response: z.null() },
+
+  /**
    * Sends a fixed, minimal item through the whole AI path so the current
    * provider settings can be verified without needing a real item — and,
    * critically, surfaces the provider's own error text in the interface rather

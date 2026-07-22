@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { ItemAnalysis, Rarity } from '@poe2/models';
 import { affixBudget, affixMods } from '@poe2/models';
-import { subscribe } from '@/lib/ipc';
+import { invoke, subscribe } from '@/lib/ipc';
 
 const RARITY_TEXT: Record<Rarity, string> = {
   Normal: 'text-rarity-normal',
@@ -39,9 +39,24 @@ export function OverlayApp(): React.JSX.Element | null {
   const affixes = affixMods(item).length;
   const advice = deterministic.recommendations[0];
 
+  // The overlay is click-through until the cursor is over the card. Telling the
+  // main process to make it interactive on enter — and click-through again on
+  // leave — is what lets a click land without ever intercepting one meant for
+  // the game.
+  const setInteractive = (interactive: boolean): void => {
+    void invoke('overlay:setInteractive', { interactive });
+  };
+
   return (
     <div className="flex h-screen w-screen items-start p-1">
-      <div className="w-full rounded-lg border border-line bg-base/95 p-4 shadow-2xl backdrop-blur">
+      <button
+        type="button"
+        onMouseEnter={() => setInteractive(true)}
+        onMouseLeave={() => setInteractive(false)}
+        onClick={() => void invoke('overlay:open', null)}
+        title="Open the full analysis"
+        className="group block w-full cursor-pointer rounded-lg border border-line bg-base/95 p-4 text-left shadow-2xl backdrop-blur transition-colors hover:border-accent/50"
+      >
         <header className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className={`truncate text-[14px] font-semibold ${RARITY_TEXT[item.rarity]}`}>
@@ -84,7 +99,12 @@ export function OverlayApp(): React.JSX.Element | null {
             {deterministic.weaknesses[0]}
           </div>
         )}
-      </div>
+
+        {/* Only legible on hover, so it does not clutter the glance-read. */}
+        <div className="mt-2 text-[10px] text-ink-dim opacity-0 transition-opacity group-hover:opacity-100">
+          Click to open the full analysis
+        </div>
+      </button>
     </div>
   );
 }

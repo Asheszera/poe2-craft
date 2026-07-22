@@ -28,6 +28,10 @@ export interface HandlerDeps {
   readonly hotkeys?: HotkeyRegistry | undefined;
   /** Traces provider traffic to the terminal. Development only. */
   readonly aiDebug?: ((event: AIDebugEvent) => void) | undefined;
+  /** Toggles the overlay's click-through. Wired only when an overlay exists. */
+  readonly setOverlayInteractive?: ((interactive: boolean) => void) | undefined;
+  /** Brings the main window forward, e.g. when the overlay is clicked. */
+  readonly openMainWindow?: (() => void) | undefined;
 }
 
 /**
@@ -161,7 +165,19 @@ export const createHandlers = ({
   history,
   hotkeys,
   aiDebug,
+  setOverlayInteractive,
+  openMainWindow,
 }: HandlerDeps): IpcHandlers => ({
+  'overlay:setInteractive': ({ interactive }) => {
+    setOverlayInteractive?.(interactive);
+    return null;
+  },
+
+  'overlay:open': () => {
+    openMainWindow?.();
+    return null;
+  },
+
   'craft:pool': ({ raw }) => {
     const analysis = analyzeText(raw);
     if (!analysis.ok) {
